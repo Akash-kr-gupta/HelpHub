@@ -1,4 +1,5 @@
 📄 Software Requirements Specification (SRS)
+
 🚑 HelpHub — Social Emergency Network
 1. Introduction
 1.1 Purpose
