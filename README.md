@@ -156,15 +156,7 @@ Open:
 
 ---
 
-## 👨‍💻 Author
 
-**Akash Kumar Gupta**
-B.Tech Computer Science
-C.V. Raman Global University
-
-GitHub: https://github.com/Akash-kr-gupta
-
----
 
 ## ❤️ Vision
 
