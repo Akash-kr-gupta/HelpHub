@@ -1,1 +1,173 @@
-# HelpHub
+# 🚑 HelpHub — Social Emergency Network
+
+HelpHub is a **real-time social emergency assistance platform** that connects people in need with volunteers, NGOs, and donors instantly.
+
+It enables **anyone to request help and anyone to contribute**, creating a powerful community-driven support system.
+
+---
+
+## 🌍 Problem Statement
+
+During emergencies like:
+
+* Blood requirements
+* Injured animals
+* Medical emergencies
+* Lost pets
+* Food assistance
+
+People often struggle to **find immediate local help**.
+
+HelpHub solves this by providing a **location-based digital response network.**
+
+---
+
+## 🚀 Features
+
+### 👤 User Features
+
+* 🔐 Login & Signup with role system (User / Volunteer / NGO)
+* 📢 Post emergency request with description
+* 📍 Auto detect live location
+* 🖼 Optional photo upload proof
+* 📊 Track request status (Pending / Completed)
+* ⭐ View personal requests
+* 👤 Profile dashboard
+
+### 🤝 Volunteer Features
+
+* 📋 View nearby emergency requests
+* ✅ Accept & mark help as completed
+* 🔔 Real-time new request notification
+* 🗺 Map view of emergencies
+
+### 🏢 NGO Panel
+
+* NGO login system
+* View official emergency list
+* Accept high-priority cases
+
+### 💡 Social Impact Modules
+
+* 🎁 Donation module (future scope)
+* 📊 Impact analytics
+* 🌍 Community participation
+
+---
+
+## 🧠 Tech Stack
+
+**Frontend**
+
+* HTML
+* CSS (Glassmorphism UI)
+* Bootstrap
+* JavaScript
+* Leaflet.js (Map Integration)
+
+**Backend**
+
+* Python Flask
+* MongoDB
+* PyMongo
+
+**Other**
+
+* Geolocation API
+* REST APIs
+* Session Authentication
+
+---
+
+## 📂 Project Structure
+
+```
+HelpHub/
+│
+├── backend/
+│   ├── app.py
+│   ├── config.py
+│   └── routes.py
+│
+├── templates/
+│   ├── index.html
+│   ├── dashboard.html
+│   ├── request_help.html
+│   ├── login.html
+│   ├── signup.html
+│   ├── profile.html
+│   └── my_requests.html
+│
+├── css/
+├── js/
+├── uploads/
+└── README.md
+```
+
+---
+
+## ⚙️ Installation
+
+### 1️⃣ Clone Repo
+
+```
+git clone https://github.com/Akash-kr-gupta/HelpHub.git
+cd HelpHub
+```
+
+### 2️⃣ Create Virtual Environment
+
+```
+python -m venv venv
+venv\Scripts\activate
+```
+
+### 3️⃣ Install Dependencies
+
+```
+pip install flask pymongo
+```
+
+### 4️⃣ Start MongoDB
+
+```
+mongod --dbpath C:\data\db
+```
+
+### 5️⃣ Run App
+
+```
+flask run
+```
+
+Open:
+👉 http://127.0.0.1:5000
+
+---
+
+## 🌐 Future Enhancements
+
+* 🔴 Real-time socket notifications
+* 📱 Mobile PWA version
+* 💳 Online donation gateway
+* 🧠 AI emergency priority detection
+* 📡 SMS alerts
+* 📊 Admin analytics dashboard
+
+---
+
+## 👨‍💻 Author
+
+**Akash Kumar Gupta**
+B.Tech Computer Science
+C.V. Raman Global University
+
+GitHub: https://github.com/Akash-kr-gupta
+
+---
+
+## ❤️ Vision
+
+HelpHub aims to become a **national social emergency response platform** where technology empowers humanity.
+
+> “Anyone can ask. Anyone can help.”
