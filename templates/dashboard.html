@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
@@ -32,11 +31,10 @@ height:100vh;
 background:#111827;
 padding:20px;
 color:white;
-transition:.4s;
 }
 
-.sidebar.hide{
-transform:translateX(-250px);
+.sidebar h3{
+margin-bottom:30px;
 }
 
 .sidebar a{
@@ -56,12 +54,7 @@ background:#1f2937;
 
 .main{
 margin-left:260px;
-padding:20px;
-transition:.4s;
-}
-
-.full{
-margin-left:20px !important;
+padding:25px;
 }
 
 /* CARD */
@@ -69,172 +62,180 @@ margin-left:20px !important;
 .card{
 border-radius:20px;
 border:none;
-background:rgba(255,255,255,.85);
-backdrop-filter:blur(12px);
+background:rgba(255,255,255,.92);
 transition:.3s;
 }
 
 .dark .card{
 background:#1f2937;
+color:white;
 }
 
 .card:hover{
-transform:translateY(-8px);
-box-shadow:0 25px 60px rgba(0,0,0,.25);
+transform:translateY(-6px);
+box-shadow:0 20px 40px rgba(0,0,0,.25);
 }
 
-/* MAP */
+.own{
+border:3px solid #00c853;
+}
+
+.priority{
+padding:4px 10px;
+border-radius:10px;
+font-size:12px;
+color:white;
+}
+
+.high{background:red}
+.medium{background:orange}
+.low{background:green}
 
 #map{
 height:500px;
 display:none;
 border-radius:20px;
+margin-bottom:20px;
 }
 
-/* FAB */
-
-.fab{
-position:fixed;
-bottom:30px;
-right:30px;
-}
-
-.fab button{
-display:block;
-margin-top:10px;
-border:none;
-border-radius:50%;
-width:60px;
-height:60px;
-font-size:22px;
-}
-
-/* BELL */
-
-.bell{
-font-size:24px;
-cursor:pointer;
-position:relative;
-}
-
-.dot{
-position:absolute;
-top:-5px;
-right:-5px;
-background:red;
-width:12px;
-height:12px;
-border-radius:50%;
-display:none;
+.topbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
 }
 
 </style>
-
 </head>
 
 <body>
 
-<div class="sidebar" id="sidebar">
+<div class="sidebar">
 
 <h3>🚑 HelpHub</h3>
 
 <a href="/">🏠 Home</a>
 <a href="/request">🆘 Post Help</a>
-<a href="#" onclick="toggleMap()">🗺 Map View</a>
-<a href="#">⭐ Activity</a>
+<a href="/my-requests">📋 My Requests</a>
+<a href="/analytics">📊 Analytics</a>
+<a href="/logout">🚪 Logout</a>
+<a href="/profile">👤 Profile</a>
 
 </div>
 
-<div class="main" id="main">
+<div class="main">
 
-<div class="d-flex justify-content-between mb-4">
-
-<button class="btn btn-dark" onclick="toggleSidebar()">☰</button>
+<div class="topbar">
 
 <h2>Dashboard</h2>
 
 <div>
-<span class="bell" onclick="checkNew()">🔔<div class="dot" id="dot"></div></span>
-<button class="btn btn-dark ms-3" onclick="toggleMode()">🌙</button>
+<button class="btn btn-dark" onclick="toggleMode()">🌙</button>
+<button class="btn btn-warning" onclick="toggleMap()">🗺 Map</button>
 </div>
 
 </div>
+
+<!-- FLASH MESSAGE -->
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-info">{{messages[0]}}</div>
+{% endif %}
+{% endwith %}
 
 <div id="map"></div>
 
-<div class="row" id="cards">
+<div class="row">
 
 {% for r in data %}
-<div class="col-md-4 mb-4">
-<div class="card p-3">
-<img src="/uploads/{{r.photo}}" class="img-fluid rounded mb-2">
-<h5>{{r.help_type}}</h5>
-<p>{{r.location}}</p>
 
-{% if r.status=='Pending' %}
-<span class="badge bg-danger">Pending</span>
+<div class="col-md-4 mb-4">
+
+<div class="card p-3 {% if r.createdBy == session['user_id'] %}own{% endif %}">
+
+{% if r.photo %}
+<img src="/uploads/{{r.photo}}" class="img-fluid rounded mb-2">
+{% endif %}
+
+<h5>{{r.help_type}}</h5>
+
+<p>📍 {{r.location}}</p>
+<p>📞 {{r.contact}}</p>
+
+<!-- PRIORITY -->
+
+{% if r.priority == "High" %}
+<span class="priority high">High</span>
+{% elif r.priority == "Medium" %}
+<span class="priority medium">Medium</span>
 {% else %}
-<span class="badge bg-success">Done</span>
+<span class="priority low">Low</span>
 {% endif %}
 
 <br><br>
 
-{% if r.status=='Pending' %}
-<a href="/accept/{{r._id}}" class="btn btn-primary btn-sm">Accept</a>
+{% if r.status == "Pending" %}
+<span class="badge bg-danger">Pending</span>
+{% else %}
+<span class="badge bg-success">Completed</span>
+{% endif %}
+
+<br><br>
+
+{% if r.status == "Pending" and r.createdBy != session['user_id'] %}
+<a href="/accept/{{r._id}}" class="btn btn-primary btn-sm">Accept Help</a>
+{% endif %}
+
+{% if r.createdBy == session['user_id'] %}
+<span class="badge bg-success">Your Request</span>
 {% endif %}
 
 </div>
+
 </div>
+
 {% endfor %}
 
 </div>
 
 </div>
 
-
-<div class="fab">
-<button class="btn btn-danger" onclick="goRequest()">🆘</button>
-<button class="btn btn-success">🤝</button>
-<button class="btn btn-warning" onclick="toggleMap()">🗺</button>
-</div>
-
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
+function toggleMode(){
+document.body.classList.toggle("dark")
+}
+
 let map;
-let mapVisible=false;
+let visible=false;
 
 function toggleMap(){
 
-mapVisible=!mapVisible;
+visible=!visible
+let m=document.getElementById("map")
 
-let mapDiv=document.getElementById("map");
+if(visible){
 
-if(mapVisible){
-mapDiv.style.display="block";
+m.style.display="block"
 
 if(!map){
 
-map=L.map('map').setView([20.5937,78.9629],5);
+map=L.map('map').setView([20.5937,78.9629],5)
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
 
 fetch("/api/all")
 .then(res=>res.json())
 .then(data=>{
 data.forEach(d=>{
-if(d.location.includes(",")){
-let parts=d.location.split(",");
-let lat=parseFloat(parts[0]);
-let lon=parseFloat(parts[1]);
-
-L.marker([lat,lon])
+if(d.location && d.location.includes(",")){
+let p=d.location.split(",")
+L.marker([parseFloat(p[0]),parseFloat(p[1])])
 .addTo(map)
-.bindPopup("<b>"+d.help_type+"</b><br>"+d.status);
+.bindPopup("<b>"+d.help_type+"</b><br>"+d.status)
 }
 })
 })
@@ -242,42 +243,9 @@ L.marker([lat,lon])
 }
 
 }else{
-mapDiv.style.display="none";
+m.style.display="none"
 }
 
-}
-
-function toggleSidebar(){
-document.getElementById("sidebar").classList.toggle("hide")
-document.getElementById("main").classList.toggle("full")
-}
-
-function toggleMode(){
-document.body.classList.toggle("dark")
-}
-
-function goRequest(){
-window.location="/request"
-}
-
-/* Notification Polling */
-
-let lastCount=0;
-
-setInterval(()=>{
-fetch("/api/count")
-.then(res=>res.json())
-.then(data=>{
-if(lastCount!=0 && data.count>lastCount){
-document.getElementById("dot").style.display="block"
-}
-lastCount=data.count
-})
-},4000)
-
-function checkNew(){
-alert("Check dashboard — new emergencies added.")
-document.getElementById("dot").style.display="none"
 }
 
 </script>

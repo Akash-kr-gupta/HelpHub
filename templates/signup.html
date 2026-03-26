@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>HelpHub Signup</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+background:linear-gradient(135deg,#ff9a9e,#fad0c4);
+font-family:Segoe UI;
+}
+
+.card-box{
+width:420px;
+padding:40px;
+border-radius:20px;
+background:white;
+box-shadow:0 20px 60px rgba(0,0,0,.25);
+animation:fade .6s ease;
+}
+
+@keyframes fade{
+from{opacity:0; transform:translateY(20px)}
+to{opacity:1}
+}
+
+.logo{
+text-align:center;
+font-size:30px;
+font-weight:bold;
+margin-bottom:15px;
+}
+
+.role{
+border:2px solid #eee;
+padding:10px;
+border-radius:12px;
+text-align:center;
+cursor:pointer;
+transition:.3s;
+}
+
+.role:hover{
+background:#ffe3ea;
+border-color:#ff6a88;
+}
+
+.active{
+background:#ffe3ea;
+border-color:#ff6a88;
+}
+
+.btn-main{
+background:linear-gradient(120deg,#ff6a88,#ff99ac);
+border:none;
+border-radius:30px;
+padding:12px;
+font-weight:bold;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card-box">
+
+<div class="logo">🚑 HelpHub</div>
+
+<form method="POST">
+
+<input name="name" class="form-control mb-3" placeholder="Full Name" required>
+
+<input name="email" type="email" class="form-control mb-3" placeholder="Email" required>
+
+<input name="password" type="password" class="form-control mb-3" placeholder="Password" required>
+
+<input type="hidden" name="role" id="roleInput">
+
+<label class="fw-bold mb-2">Select Role</label>
+
+<div class="row g-2">
+
+<div class="col-4">
+<div class="role" onclick="setRole(this,'citizen')">👤 Citizen</div>
+</div>
+
+<div class="col-4">
+<div class="role" onclick="setRole(this,'volunteer')">🤝 Volunteer</div>
+</div>
+
+<div class="col-4">
+<div class="role" onclick="setRole(this,'ngo')">🏥 NGO</div>
+</div>
+
+</div>
+
+<button class="btn btn-main w-100">Signup</button>
+
+</form>
+
+<div class="text-center mt-3">
+<a href="/login">Already have account?</a>
+</div>
+
+</div>
+
+<script>
+
+function setRole(el,role){
+document.querySelectorAll(".role").forEach(r=>r.classList.remove("active"))
+el.classList.add("active")
+document.getElementById("roleInput").value=role
+}
+
+</script>
+
+</body>
+</html>
