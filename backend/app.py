@@ -208,6 +208,16 @@ def ngo_dashboard():
     data = list(requests_collection.find().sort("createdAt", -1))
     return render_template("ngo_dashboard.html", data=data)
 
+@app.route('/ngo/rescue-requests')
+@login_required  # if you have login
+def ngo_rescue_requests():
+    # Sample data - replace with your database query
+    all_requests = [
+        {'id': 1, 'issue': 'Stray Dog - Broken Leg', 'location': 'Park Street', 'status': 'pending'},
+        {'id': 2, 'issue': 'Cat - Injured Paw', 'location': 'Salt Lake', 'status': 'in_progress'},
+        # Add more...
+    ]
+    return render_template('rescue_requests.html', requests=all_requests)
 
 @app.route("/ngo-accept/<id>")
 @ngo_required
