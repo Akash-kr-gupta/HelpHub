@@ -18,9 +18,14 @@ app.use(morgan('dev'));
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/helphub';
 
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch((e) => console.error('MongoDB connection error', e));
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+})
+  .then(() => console.log('✅ MongoDB Atlas Connected'))
+  .catch((e) => console.error('MongoDB Atlas connection error', e));
 
 const userSchema = new mongoose.Schema({
   name: String,
