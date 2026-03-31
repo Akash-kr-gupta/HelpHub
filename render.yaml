@@ -3,8 +3,9 @@ services:
     name: helphub-backend
     runtime: node
     plan: free
-    buildCommand: cd backend_node && npm install
-    startCommand: cd backend_node && npm start
+    rootDir: backend_node
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: PORT
         value: 5000
@@ -13,8 +14,9 @@ services:
 
   - type: static
     name: helphub-frontend
-    staticPublishPath: frontend_react/dist
-    buildCommand: cd frontend_react && npm install && npm run build
+    rootDir: frontend_react
+    staticPublishPath: dist
+    buildCommand: npm install && npm run build
     envVars:
       - key: NODE_ENV
         value: production
