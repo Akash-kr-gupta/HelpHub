@@ -4,19 +4,19 @@ services:
     runtime: node
     plan: free
     rootDir: backend_node
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm ci
+    startCommand: node server.js
     envVars:
       - key: PORT
         value: 5000
-      - key: MONGO_URI
-        sync: false
+      - key: NODE_ENV
+        value: production
 
   - type: static
     name: helphub-frontend
     rootDir: frontend_react
-    staticPublishPath: dist
-    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    buildCommand: npm ci && npm run build
     envVars:
       - key: NODE_ENV
         value: production
