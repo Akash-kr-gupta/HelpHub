@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: helphub-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend_node && npm install
+    startCommand: cd backend_node && npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false
+
+  - type: static
+    name: helphub-frontend
+    staticPublishPath: frontend_react/dist
+    buildCommand: cd frontend_react && npm install && npm run build
+    envVars:
+      - key: NODE_ENV
+        value: production
