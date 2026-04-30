@@ -28,6 +28,8 @@ export default function Donate() {
   const [status, setStatus] = useState('');
   const [errors, setErrors] = useState({});
   const [showToast, setShowToast] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [receipt, setReceipt] = useState(null);
 
   useEffect(() => {
     axios.get('/api/ngos', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
@@ -68,16 +70,40 @@ export default function Donate() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    if (form.donationType === 'Money') {
+      setPaymentProcessing(true);
+      
+      // Simulate real Payment Gateway delay (Stripe/Razorpay) 
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
     try {
-      await axios.post('/api/donations', form, {
+      const res = await axios.post('/api/donations', form, {
         headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` }
       });
+      
       setStatus('success');
-      setShowToast(true);
+      
+      if (form.donationType === 'Money') {
+        setPaymentProcessing(false);
+        setReceipt({
+          id: res.data._id || `RCPT-${Math.floor(Math.random() * 1000000)}`,
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          name: form.name,
+          amount: form.amount,
+          ngoName: form.ngoName || 'Global Relief Pool',
+          paymentMethod: 'Card ending in **** 4242'
+        });
+      } else {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 5000);
+      }
+      
       setForm({ name: '', donationType: 'Money', item: '', amount: '', quantity: '', contact: '', address: '', message: '', ngoId: '', ngoName: '' });
       setErrors({});
-      setTimeout(() => setShowToast(false), 5000);
     } catch (err) {
+      setPaymentProcessing(false);
       setStatus('error');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 5000);
@@ -95,7 +121,7 @@ export default function Donate() {
       background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
       padding: '4rem 1rem'
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div className="donate-container" style={{ maxWidth: '900px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} style={{ display: 'inline-flex', padding: '16px', borderRadius: '24px', background: 'white', color: 'var(--primary)', fontSize: '2.5rem', marginBottom: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>
             <i className="fas fa-hand-holding-heart"></i>
@@ -107,6 +133,81 @@ export default function Donate() {
             Your small contribution can be a huge blessing for someone in need. Join our network of verified donors.
           </motion.p>
         </header>
+
+        <AnimatePresence>
+          {paymentProcessing && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.9)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <div className="spinner" style={{ border: '4px solid #e2e8f0', borderTop: '4px solid var(--primary)', borderRadius: '50%', width: '60px', height: '60px', animation: 'spin 1s linear infinite', marginBottom: '20px' }}></div>
+              <h2 style={{ color: 'var(--primary)' }}>Processing Payment securely...</h2>
+              <p>Please do not close this window</p>
+            </motion.div>
+          )}
+
+          {receipt && (
+             <motion.div 
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+             className="hide-on-print"
+           >
+             <motion.div 
+               initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }}
+               style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '500px', overflow: 'hidden', boxShadow: 'var(--shadow-xl)' }}
+             >
+               <div id="receipt-area" style={{ padding: '40px', background: 'white' }}>
+                 <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                   <div style={{ width: '60px', height: '60px', background: '#ecfdf5', color: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', margin: '0 auto 16px' }}>
+                     <i className="fas fa-check"></i>
+                   </div>
+                   <h2 style={{ margin: '0 0 8px 0', fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)' }}>Payment Successful!</h2>
+                   <p style={{ margin: 0, color: 'var(--text-muted)' }}>Transaction ID: {receipt.id}</p>
+                 </div>
+                 
+                 <div style={{ borderTop: '2px dashed #e2e8f0', borderBottom: '2px dashed #e2e8f0', padding: '20px 0', margin: '20px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: 'var(--text-muted)' }}>Date & Time</span>
+                       <span style={{ fontWeight: 600 }}>{receipt.date} {receipt.time}</span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: 'var(--text-muted)' }}>Donor Name</span>
+                       <span style={{ fontWeight: 600 }}>{receipt.name}</span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: 'var(--text-muted)' }}>Payment Method</span>
+                       <span style={{ fontWeight: 600 }}>{receipt.paymentMethod}</span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: 'var(--text-muted)' }}>Beneficiary</span>
+                       <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{receipt.ngoName}</span>
+                     </div>
+                 </div>
+
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.25rem', fontWeight: 900, margin: '20px 0 0 0' }}>
+                   <span>Total Paid</span>
+                   <span style={{ color: '#10b981' }}>₹{receipt.amount}.00</span>
+                 </div>
+               </div>
+
+               <div style={{ padding: '20px', background: '#f8fafc', display: 'flex', gap: '12px', borderTop: '1px solid #e2e8f0' }} className="hide-on-print">
+                 <button 
+                   onClick={() => window.print()}
+                   style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '2px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}
+                 >
+                   <i className="fas fa-print me-2"></i> Print Receipt
+                 </button>
+                 <button 
+                   onClick={() => setReceipt(null)}
+                   style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, cursor: 'pointer' }}
+                 >
+                   Done
+                 </button>
+               </div>
+             </motion.div>
+           </motion.div>
+          )}
+        </AnimatePresence>
 
         <motion.div 
           initial={{ opacity: 0, y: 40 }} 
@@ -298,6 +399,42 @@ export default function Donate() {
           font-size: 1rem;
           transition: all 0.2s;
         }
+        .form-control-v2.error {
+          border-color: var(--danger);
+          background: var(--danger-light);
+        }
+        .form-control-v2:focus {
+          border-color: var(--primary);
+          outline: none;
+          box-shadow: 0 0 0 4px var(--primary-glow);
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #receipt-area, #receipt-area * {
+            visibility: visible;
+          }
+          #receipt-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+          }
+          .hide-on-print {
+             display: none !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
         .form-control-v2:focus {
           outline: none;
           border-color: var(--primary);
