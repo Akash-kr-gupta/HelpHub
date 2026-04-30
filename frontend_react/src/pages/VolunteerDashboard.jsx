@@ -147,6 +147,7 @@ export default function VolunteerDashboard() {
                   onAction={() => handleDonationAction(d._id, d.status === 'Pending' ? 'accept' : 'complete')} 
                   actionLabel={d.status === 'Pending' ? 'Accept Pickup' : 'Mark Picked Up'} 
                   color="#10b981" 
+                  secondaryAction={{ label: 'Chat Donor', onClick: () => navigate(`/chat/${d._id}?type=donation`) }}
                 />
               ))}
             </AnimatePresence>
@@ -182,7 +183,7 @@ function SidebarLink({ active, onClick, icon, label }) {
   );
 }
 
-function TaskCard({ title, description, meta, onAction, actionLabel, color }) {
+function TaskCard({ title, description, meta, onAction, actionLabel, color, secondaryAction }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -206,8 +207,25 @@ function TaskCard({ title, description, meta, onAction, actionLabel, color }) {
         ))}
       </div>
 
-      <button 
-        onClick={onAction}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button 
+          onClick={onAction}
+          style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: color, color: 'white', fontWeight: 700, cursor: 'pointer' }}
+        >
+          {actionLabel}
+        </button>
+        {secondaryAction && (
+          <button 
+            onClick={secondaryAction.onClick}
+            style={{ flex: 1, padding: '12px', borderRadius: '12px', border: `2px solid ${color}`, background: 'transparent', color: color, fontWeight: 700, cursor: 'pointer' }}
+          >
+            <i className={`fas ${secondaryAction.icon || 'fa-comment'} me-2`}></i> {secondaryAction.label}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
         className="btn-primary" 
         style={{ width: '100%', padding: '12px', background: color }}
       >

@@ -299,6 +299,12 @@ app.get('/api/donations', authenticate, async (req, res) => {
   res.json(donations);
 });
 
+app.get('/api/donations/:id', authenticate, async (req, res) => {
+  const donation = await Donation.findById(req.params.id).populate('ngoId', 'name');
+  if (!donation) return res.status(404).json({ message: 'Donation not found' });
+  res.json(donation);
+});
+
 app.put('/api/donations/:id/accept', authenticate, async (req, res) => {
   if (req.user.role !== 'volunteer' && req.user.role !== 'ngo') {
     return res.status(403).json({ message: 'Only volunteers or NGOs can accept donations' });

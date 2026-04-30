@@ -10,6 +10,7 @@ export default function Chat() {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState([]);
   const [request, setRequest] = useState(null);
+  const [donation, setDonation] = useState(null);
   const scrollRef = useRef();
   const socketRef = useRef();
   const user = JSON.parse(localStorage.getItem('helphub_user') || '{}');
@@ -20,11 +21,23 @@ export default function Chat() {
   }, [id]);
 
   useEffect(() => {
-    axios.get('/api/requests/' + id, {
-      headers: { Authorization: 'Bearer ' + localStorage.getItem('helphub_token') },
-    })
-      .then((res) => setRequest(res.data))
-      .catch((err) => console.error('Failed to load request for chat', err));
+    // Determine if it's a donation or request chat by trying both if one fails, or parsing search params
+    const searchParams = new URLSearchParams(window.location.search);
+    const isDonation = searchParams.get('type') === 'donation';
+
+    if (isDonation) {
+      axios.get('/api/donations/' + id, {
+        headers: { Authorization: 'Bearer ' + localStorage.getItem('helphub_token') },
+      })
+        .then((res) => setDonation(res.data))
+        .catch((err) => console.error('Failed to load donation for chat', err));
+    } else {
+      axios.get('/api/requests/' + id, {
+        headers: { Authorization: 'Bearer ' + localStorage.getItem('helphub_token') },
+      })
+        .then((res) => setRequest(res.data))
+        .catch((err) => console.error('Failed to load request for chat', err));
+    }
   }, [id]);
 
   useEffect(() => {
@@ -95,9 +108,9 @@ export default function Chat() {
             <i className="fas fa-chevron-left"></i>
           </button>
           <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>{request?.help_type || 'Support'} Chat</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>{donation ? 'Pickup Coordination' : request?.help_type || 'Support'} Chat</h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-              {request?.completedBy ? 'Task Assigned' : 'Waiting for connection...'}
+              {donation ? 'Coordinating with Donor...' : (request?.completedBy ? 'Task Assigned' : 'Waiting for connection...')}
             </p>
           </div>
           <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }}></div>
@@ -116,6 +129,24 @@ export default function Chat() {
              <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Location:</strong> {request?.location}</p>
              <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Contact:</strong> {request?.contact}</p>
              <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Requested By:</strong> {request?.createdBy?.name || 'User'}</p>
+          </motion.div>
+        )}
+
+        {/* Donation Details Card */}
+        {donation && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass"
+            style={{ padding: '1rem 1.5rem', borderRadius: '12px', background: '#ecfdf5', marginBottom: '10px', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid #10b981' }}
+          >
+             <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '1rem' }}>Donation Pickup Details</h4>
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Offering:</strong> {donation?.donationType} {donation?.item ? `(${donation.item})` : ''}</p>
+             {donation?.amount && <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Amount:</strong> ₹{donation?.amount}</p>}
+             {donation?.quantity && <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Quantity:</strong> {donation?.quantity}</p>}
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Address:</strong> {donation?.address || 'N/A'}</p>
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Contact:</strong> {donation?.contact}</p>
+             <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Donor:</strong> {donation?.name}</p>
           </motion.div>
         )}
 
