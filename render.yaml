@@ -19,9 +19,7 @@ services:
     name: helphub-frontend
     rootDir: frontend_react
     staticPublishPath: ./dist
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: NODE_VERSION
         value: 20
