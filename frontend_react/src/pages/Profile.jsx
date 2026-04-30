@@ -152,7 +152,14 @@ export default function Profile() {
                 ) : (
                   <>
                     {requests.map(r => (
-                      <ActivityRow key={r._id} title={r.help_type} date={r.createdAt} status={r.status} type="request" />
+                      <ActivityRow 
+                        key={r._id} 
+                        title={r.help_type} 
+                        date={r.createdAt} 
+                        status={r.status} 
+                        type="request" 
+                        onChat={r.status !== 'Pending' ? () => navigate(`/chat/${r._id}`) : undefined}
+                      />
                     ))}
                     {donations.map(d => (
                       <ActivityRow 
