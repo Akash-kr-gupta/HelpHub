@@ -331,11 +331,22 @@ app.get('/api/analytics', authenticate, async (req, res) => {
   res.json({ total, completed, pending, ngos, donations });
 });
 
-// serve React production files if needed
-app.use(express.static(path.join(__dirname, 'dist')));
+// Provide a simple health check / welcome route for the backend API URL
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'Welcome to HelpHub Backend API 🚑',
+    version: '1.0.0',
+    endpoints: 'All API endpoints are located under /api',
+    frontend: process.env.FRONTEND_URL || 'Not specified'
+  });
+});
+
 app.use('/uploads', express.static(process.env.UPLOADS_DIR || path.join(__dirname, '../uploads')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+
+// Fallback for undefined API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ message: 'API endpoint not found' });
 });
 
 server.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
