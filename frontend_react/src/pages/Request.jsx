@@ -69,15 +69,15 @@ export default function Request() {
         headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` },
       });
       setStatus('success');
-      setTimeout(() => {
-        if (currentUser.role === 'ngo') {
-          navigate('/ngo-dashboard');
-        } else if (currentUser.role === 'volunteer') {
-          navigate('/volunteer-dashboard');
-        } else {
-          navigate('/dashboard');
-        }
-      }, 500);
+      window.alert('Successfully requested');
+      
+      if (currentUser.role === 'ngo') {
+        navigate('/ngo-dashboard');
+      } else if (currentUser.role === 'volunteer') {
+        navigate('/volunteer-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setStatus('error');
       setErrors({ submit: err.response?.data?.message || 'Failed to post request. Please try again.' });
