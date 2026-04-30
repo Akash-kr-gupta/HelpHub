@@ -1,6 +1,3 @@
-Here’s a **clean, professional, properly structured README.md** you can directly use for your project based on your repo content .
-
----
 
 # 🚑 HelpHub — Social Emergency Network
 
