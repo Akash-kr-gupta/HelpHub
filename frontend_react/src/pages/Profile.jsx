@@ -155,7 +155,14 @@ export default function Profile() {
                       <ActivityRow key={r._id} title={r.help_type} date={r.createdAt} status={r.status} type="request" />
                     ))}
                     {donations.map(d => (
-                      <ActivityRow key={d._id} title={`Donated ${d.item || d.amount}`} date={d.createdAt} status="Success" type="donation" />
+                      <ActivityRow 
+                        key={d._id} 
+                        title={`Donated ${d.item || d.amount}`} 
+                        date={d.createdAt} 
+                        status={d.status || 'Success'} 
+                        type="donation" 
+                        onChat={() => navigate(`/chat/${d._id}?type=donation`)}
+                      />
                     ))}
                   </>
                 )}
@@ -183,7 +190,7 @@ function ImpactCard({ count, label, icon, color }) {
   );
 }
 
-function ActivityRow({ title, date, status, type }) {
+function ActivityRow({ title, date, status, type, onChat }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '16px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
       <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: type === 'request' ? '#6366f115' : '#ef444415', color: type === 'request' ? '#6366f1' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -193,6 +200,14 @@ function ActivityRow({ title, date, status, type }) {
         <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{title}</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(date).toLocaleDateString()}</div>
       </div>
+      {onChat && (
+        <button 
+          onClick={onChat}
+          style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid var(--primary)`, background: 'transparent', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}
+        >
+          <i className="fas fa-comment"></i> Chat
+        </button>
+      )}
       <span style={{ fontSize: '0.75rem', fontWeight: 800, color: status === 'Completed' || status === 'Success' ? '#10b981' : '#f59e0b', background: status === 'Completed' || status === 'Success' ? '#f0fdf4' : '#fefce8', padding: '4px 12px', borderRadius: '99px' }}>
         {status?.toUpperCase()}
       </span>
