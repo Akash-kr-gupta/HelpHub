@@ -12,7 +12,8 @@ services:
       - key: NODE_ENV
         value: production
 
-  - type: static_site
+  - type: web
+    env: static
     name: helphub-frontend
     rootDir: frontend_react
     staticPublishPath: ./dist
