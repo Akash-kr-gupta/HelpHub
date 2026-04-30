@@ -1,0 +1,183 @@
+.ngo-dashboard-hero {
+  background: linear-gradient(120deg, #43cea2 0%, #185a9d 100%);
+  color: #fff;
+  padding: 36px 0 24px 0;
+  border-radius: 18px;
+  margin-bottom: 28px;
+  box-shadow: 0 8px 32px rgba(24,90,157,0.13);
+  text-align: center;
+}
+
+.ngo-dashboard-hero h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.ngo-dashboard-hero p {
+  font-size: 1.2rem;
+  opacity: 0.92;
+}
+
+.ngo-dashboard-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 32px 0 18px 0;
+}
+
+.ngo-dashboard-tabs button {
+  background: #fff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 18px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #185a9d;
+  box-shadow: 0 4px 16px rgba(24,90,157,0.08);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.ngo-dashboard-tabs button.active, .ngo-dashboard-tabs button:focus {
+  background: linear-gradient(120deg, #43cea2 0%, #185a9d 100%);
+  color: #fff;
+  transform: translateY(-2px) scale(1.04);
+}
+
+.ngo-dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.ngo-dashboard-stat-card {
+  background: #fff;
+  color: #185a9d;
+  border-radius: 16px;
+  padding: 28px 18px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(24,90,157,0.08);
+  font-weight: 700;
+  font-size: 1.2rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.ngo-dashboard-stat-card h3 {
+  font-size: 2.2rem;
+  margin: 0 0 8px 0;
+  color: #43cea2;
+}
+
+.ngo-dashboard-stat-card p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #185a9d;
+}
+
+.ngo-dashboard-requests-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.ngo-dashboard-request-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(24,90,157,0.08);
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.ngo-dashboard-request-card:hover {
+  box-shadow: 0 16px 40px rgba(24,90,157,0.16);
+  transform: translateY(-4px) scale(1.01);
+}
+
+.ngo-dashboard-request-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ngo-dashboard-request-head h4 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #185a9d;
+}
+
+.ngo-dashboard-request-head .badge {
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: #43cea2;
+  color: #fff;
+}
+
+.badge-warning {
+  background: #ffb347;
+  color: #fff;
+}
+
+.ngo-dashboard-meta {
+  font-size: 0.98rem;
+  color: #185a9d;
+  opacity: 0.85;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+}
+
+.ngo-dashboard-request-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.ngo-dashboard-request-actions button {
+  padding: 8px 18px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  background: linear-gradient(120deg, #43cea2 0%, #185a9d 100%);
+  color: #fff;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.ngo-dashboard-request-actions button:hover {
+  background: linear-gradient(120deg, #185a9d 0%, #43cea2 100%);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.label-complete {
+  color: #43cea2;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-left: 8px;
+}
+
+.loading {
+  text-align: center;
+  color: #185a9d;
+  font-size: 1.2rem;
+  margin: 40px 0;
+}
+
+.empty-state {
+  text-align: center;
+  color: #888;
+  font-size: 1.1rem;
+  margin: 40px 0;
+}

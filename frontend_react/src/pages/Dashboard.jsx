@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+import Toast from '../components/Toast';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,18 +22,53 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+let socket;
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1
+  }
+};
+
 export default function Dashboard() {
+  const [toast, setToast] = useState({ show: false, message: '' });
   const [requests, setRequests] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, completed: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    completed: 0,
+  });
+  const [donations, setDonations] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [map, setMap] = useState(null);
-  const currentUser = JSON.parse(localStorage.getItem('helphub_user') || '{}');
-  const fallbackRequestImage = 'https://via.placeholder.com/420x240.png?text=No+Image+Available';
+  const [activeTab, setActiveTab] = useState('community'); // 'community' or 'my-posts'
+
+  const currentUser = JSON.parse(
+    localStorage.getItem('helphub_user') || '{}'
+  );
+
+  const fallbackRequestImage =
+    'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=1470&auto=format&fit=crop';
 
   const getOwnerId = (owner) => {
     if (!owner) return null;
-    return typeof owner === 'string' ? owner : owner._id ? owner._id.toString() : owner.toString();
+    return typeof owner === 'string'
+      ? owner
+      : owner._id
+      ? owner._id.toString()
+      : owner.toString();
   };
 
   const isMyRequest = (request) => {
@@ -40,43 +77,74 @@ export default function Dashboard() {
   };
 
   const loadData = () => {
-    axios.get('/api/requests', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
+    axios
+      .get('/api/requests', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('helphub_token')}`,
+        },
+      })
       .then((res) => setRequests(res.data))
       .catch(() => setRequests([]));
 
-    axios.get('/api/analytics', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
+    axios
+      .get('/api/donations', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('helphub_token')}`,
+        },
+      })
+      .then((res) => setDonations(res.data))
+      .catch(() => setDonations([]));
+
+    axios
+      .get('/api/analytics', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('helphub_token')}`,
+        },
+      })
       .then((res) => {
         const data = res.data;
-        if (typeof data.pending === 'undefined') {
-          setStats({
-            total: data.total || 0,
-            completed: data.completed || 0,
-            pending: data.total ? data.total - data.completed : 0,
-          });
-        } else {
-          setStats({
-            total: data.total || 0,
-            completed: data.completed || 0,
-            pending: data.pending || 0,
-          });
-        }
-      })
-      .catch(() => {});
+        setStats({
+          total: data.total || 0,
+          completed: data.completed || 0,
+          pending:
+            typeof data.pending !== 'undefined'
+              ? data.pending
+              : (data.total || 0) - (data.completed || 0),
+        });
+      });
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(loadData, 30000);
+
+    socket = io(import.meta.env.VITE_API_URL || '');
+    socket.on('new_help_request', (data) => {
+      if (!currentUser || currentUser.id !== data.createdBy) {
+        setToast({
+          show: true,
+          message: `New ${data.help_type} request posted nearby!`,
+        });
+        loadData();
+      }
+    });
+
+    socket.on('new_donation', (data) => {
+      if (!currentUser || currentUser.name !== data.name) {
+        setToast({ show: true, message: `New ${data.donationType} donation posted nearby!` });
+        loadData();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      if (socket) socket.disconnect();
+    };
   }, []);
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.body.classList.toggle('dark');
-  };
-
-  const toggleMap = () => {
-    setShowMap(!showMap);
   };
 
   const parseCoordinates = (location) => {
@@ -88,237 +156,360 @@ export default function Dashboard() {
     return null;
   };
 
-  const markers = requests
-    .map((r) => ({ id: r._id, coords: parseCoordinates(r.location), help_type: r.help_type, status: r.status }))
-    .filter((r) => r.coords);
+  const markers = [
+    ...requests.map((r) => ({
+      id: r._id,
+      coords: parseCoordinates(r.location),
+      title: r.help_type,
+      type: 'request',
+      status: r.status,
+    })),
+    ...donations.map((d) => ({
+      id: d._id,
+      coords: parseCoordinates(d.address),
+      title: d.donationType,
+      type: 'donation',
+      status: d.status,
+    }))
+  ].filter((m) => m.coords);
 
   const mapCenter = markers.length > 0 ? markers[0].coords : [20.5937, 78.9629];
 
   const acceptHelp = (id) => {
-    axios.put(`/api/requests/${id}/accept`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
-      .then(() => {
-        axios.get('/api/requests', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
-          .then((res) => setRequests(res.data));
-      });
+    axios
+      .put(`/api/requests/${id}/accept`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` },
+      })
+      .then(loadData);
   };
 
   const deleteRequest = (id) => {
-    if (!window.confirm('Are you sure you want to delete this request?')) return;
-    axios.delete(`/api/requests/${id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
+    if (!window.confirm('Delete this request?')) return;
+    axios
+      .delete(`/api/requests/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` },
+      })
       .then(() => {
         setRequests((prev) => prev.filter((req) => req._id !== id));
-      })
-      .catch((err) => {
-        console.error(err);
-        alert(err.response?.data?.message || 'Unable to delete request.');
       });
   };
 
   return (
-    <div className="dashboard-page">
+    <div className={`dashboard-container ${darkMode ? 'dark-theme' : ''}`} style={{ display: 'flex', minHeight: '100vh', background: darkMode ? '#0f172a' : '#f8fafc' }}>
+      <Toast
+        message={toast.message}
+        show={toast.show}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+
       {/* Sidebar */}
-      <div className="sidebar">
-        <h3><i className="fas fa-ambulance"></i> HelpHub</h3>
-        <a href="/"><i className="fas fa-home"></i> Home</a>
-        <a href="/donate"><i className="fas fa-exclamation-triangle"></i> Post Help</a>
-        <a href="/dashboard" className="active"><i className="fas fa-list"></i> All Requests</a>
-        <a href="/analytics"><i className="fas fa-chart-bar"></i> Analytics</a>
-        <a href="/donate"><i className="fas fa-hand-holding-heart"></i> Donate</a>
-        <a href="/logout"><i className="fas fa-sign-out-alt"></i> Logout</a>
-        <a href="/profile"><i className="fas fa-user"></i> Profile</a>
-      </div>
+      <motion.aside 
+        initial={{ x: -280 }}
+        animate={{ x: 0 }}
+        className="sidebar-glass"
+        style={{ 
+          width: '280px', 
+          height: '100vh', 
+          position: 'fixed', 
+          left: 0, 
+          top: 0, 
+          zIndex: 100,
+          background: darkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(16px)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '2rem 1.5rem'
+        }}
+      >
+        <div className="sidebar-header" style={{ marginBottom: '3rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '40px', height: '40px', background: 'var(--primary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: 'white' }}>
+            <i className="fas fa-hands-helping" style={{ margin: 'auto' }}></i>
+          </div>
+          <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.5rem', background: 'linear-gradient(135deg, var(--primary) 0%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>HelpHub</h3>
+        </div>
+
+        <nav className="sidebar-nav" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <SidebarLink to="/" icon="fa-home" label="Home" />
+          <SidebarLink to="/dashboard" icon="fa-th-large" label="All Requests" active />
+          <SidebarLink to="/request" icon="fa-plus-circle" label="New Request" />
+          <SidebarLink to="/donate" icon="fa-heart" label="Donate" />
+          <div style={{ height: '1px', background: 'rgba(0,0,0,0.05)', margin: '1rem 0' }} />
+          <SidebarLink to="/analytics" icon="fa-chart-bar" label="Analytics" />
+          <SidebarLink to="/ngo-dashboard" icon="fa-building" label="NGO Portal" />
+          <SidebarLink to="/profile" icon="fa-user-circle" label="My Profile" />
+        </nav>
+
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={toggleDarkMode} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: darkMode ? 'white' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontWeight: 600 }}>
+            <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`} style={{ width: '20px' }}></i>
+            <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+          
+          <button 
+            onClick={() => {
+              localStorage.clear();
+              window.location.href = '/login';
+            }} 
+            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px' }}
+          >
+            <i className="fas fa-sign-out-alt" style={{ width: '20px' }}></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </motion.aside>
 
       {/* Main Content */}
-      <div className="main">
-        <div className="topbar">
-          <h2><i className="fas fa-tachometer-alt"></i> Dashboard</h2>
+      <main style={{ marginLeft: '280px', flex: 1, padding: '2.5rem' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
           <div>
-            <motion.button
-              className="btn btn-dark"
-              onClick={toggleDarkMode}
-              title="Toggle Dark Mode"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <i className="fas fa-moon"></i>
-            </motion.button>
-            <motion.button
-              className="btn btn-warning"
-              onClick={toggleMap}
-              title="Toggle Map View"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <i className="fas fa-map"></i>
-            </motion.button>
+            <h1 style={{ margin: 0, fontSize: '2.25rem', fontWeight: 800, color: darkMode ? 'white' : 'var(--text-main)' }}>Community Board</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '4px' }}>Real-time emergency requests across your area.</p>
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+             <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowMap(!showMap)} 
+                className="glass"
+                style={{ padding: '12px 24px', borderRadius: '99px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 8px 16px var(--primary-glow)' }}
+              >
+                <i className={`fas ${showMap ? 'fa-list' : 'fa-map'}`}></i>
+                {showMap ? 'Show List' : 'View Map'}
+              </motion.button>
+          </div>
+        </header>
 
-        {/* Welcome Message */}
-        <motion.div
-          className="welcome"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h4><i className="fas fa-hand-wave"></i> Welcome back!</h4>
-          <p>Here's an overview of all help requests. Help someone in need or check your own requests.</p>
+        {/* Stats Grid */}
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '3rem' }}>
+          <StatCard label="Total Impact" value={stats.total} icon="fa-globe" color="#6366f1" delay={0} dark={darkMode} />
+          <StatCard label="Critical Needs" value={stats.pending} icon="fa-clock" color="#f59e0b" delay={0.1} dark={darkMode} />
+          <StatCard label="Successful Helps" value={stats.completed} icon="fa-check-circle" color="#10b981" delay={0.2} dark={darkMode} />
         </motion.div>
 
-        {/* Stats */}
-        <div className="stats-container">
-          {[
-            { icon: 'fas fa-clipboard-list', value: stats.total, label: 'Total Requests' },
-            { icon: 'fas fa-clock', value: stats.pending, label: 'Pending Help' },
-            { icon: 'fas fa-check-circle', value: stats.completed, label: 'Completed' }
-          ].map((stat, index) => (
-            <motion.div
-              key={index}
-              className="stat-card"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, duration: 0.6 }}
-              whileHover={{ y: -8, scale: 1.02 }}
-            >
-              <i className={stat.icon}></i>
-              <h3>{stat.value}</h3>
-              <p>{stat.label}</p>
+        {/* Dynamic Content */}
+        <AnimatePresence mode="wait">
+          {showMap ? (
+            <motion.div key="map" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ height: '600px', borderRadius: '32px', overflow: 'hidden', boxShadow: 'var(--shadow-xl)' }}>
+              <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%' }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {markers.map((marker) => (
+                  <Marker key={marker.id} position={marker.coords}>
+                    <Popup>
+                      <div style={{ padding: '8px' }}>
+                        <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: marker.type === 'request' ? '#ef4444' : '#10b981', display: 'block', marginBottom: '2px' }}>
+                          {marker.type}
+                        </span>
+                        <strong style={{ display: 'block', marginBottom: '4px' }}>{marker.title}</strong>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Status: {marker.status}</span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
             </motion.div>
-          ))}
+          ) : (
+            <>
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: '24px', marginBottom: '2rem', borderBottom: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`, paddingBottom: '12px' }}>
+                <button 
+                  onClick={() => setActiveTab('community')}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: activeTab === 'community' ? 'var(--primary)' : 'var(--text-muted)', 
+                    fontWeight: 700, 
+                    fontSize: '1.1rem', 
+                    cursor: 'pointer',
+                    position: 'relative',
+                    padding: '0 8px'
+                  }}
+                >
+                  Community Feed
+                  {activeTab === 'community' && <motion.div layoutId="tab-underline" style={{ position: 'absolute', bottom: '-13px', left: 0, right: 0, height: '3px', background: 'var(--primary)', borderRadius: '2px' }} />}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('my-posts')}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: activeTab === 'my-posts' ? 'var(--primary)' : 'var(--text-muted)', 
+                    fontWeight: 700, 
+                    fontSize: '1.1rem', 
+                    cursor: 'pointer',
+                    position: 'relative',
+                    padding: '0 8px'
+                  }}
+                >
+                  My Activity
+                  {activeTab === 'my-posts' && <motion.div layoutId="tab-underline" style={{ position: 'absolute', bottom: '-13px', left: 0, right: 0, height: '3px', background: 'var(--primary)', borderRadius: '2px' }} />}
+                </button>
+              </div>
+
+              <motion.div key="list" variants={containerVariants} initial="hidden" animate="visible" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
+                {requests
+                  .filter(r => activeTab === 'my-posts' ? isMyRequest(r) : !isMyRequest(r))
+                  .map((r) => (
+                    <RequestCard key={r._id} request={r} mine={isMyRequest(r)} onAccept={acceptHelp} onDelete={deleteRequest} fallbackImage={fallbackRequestImage} dark={darkMode} />
+                  ))}
+                {requests.filter(r => activeTab === 'my-posts' ? isMyRequest(r) : !isMyRequest(r)).length === 0 && (
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)' }}>
+                    <i className="fas fa-inbox" style={{ fontSize: '4rem', marginBottom: '1.5rem', opacity: 0.3 }}></i>
+                    <h3>{activeTab === 'my-posts' ? "You haven't posted any help requests yet." : "No community requests at the moment."}</h3>
+                    <p>{activeTab === 'my-posts' ? "Post a request if you need assistance." : "Check back later or post a new request yourself."}</p>
+                  </div>
+                )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+function SidebarLink({ to, icon, label, active = false }) {
+  return (
+    <Link to={to} style={{ 
+      textDecoration: 'none', 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '12px', 
+      padding: '12px 16px', 
+      borderRadius: '12px',
+      background: active ? 'var(--primary)' : 'transparent',
+      color: active ? 'white' : 'inherit',
+      fontWeight: 600,
+      transition: 'all 0.2s'
+    }}>
+      <i className={`fas ${icon}`} style={{ width: '20px', opacity: active ? 1 : 0.6 }}></i>
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function StatCard({ label, value, icon, color, delay, dark }) {
+  return (
+    <motion.div variants={itemVariants} className="glass" style={{ 
+      padding: '24px', 
+      borderRadius: '24px', 
+      background: dark ? 'rgba(255,255,255,0.05)' : 'white',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '20px',
+      border: `1px solid ${color}20`,
+    }}>
+      <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: `${color}15`, color: color, display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '1.5rem' }}>
+        <i className={`fas ${icon}`} style={{ margin: 'auto' }}></i>
+      </div>
+      <div>
+        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: dark ? 'white' : 'var(--text-main)' }}>{value}</div>
+      </div>
+    </motion.div>
+  );
+}
+
+function RequestCard({ request, mine, onAccept, onDelete, fallbackImage, dark }) {
+  const isPending = request.status === 'Pending';
+  
+  return (
+    <motion.div variants={itemVariants} whileHover={{ y: -8 }} className="glass" style={{ 
+      borderRadius: '24px', 
+      overflow: 'hidden', 
+      background: dark ? 'rgba(255,255,255,0.05)' : 'white',
+      border: mine ? '2px solid var(--primary)' : '1px solid rgba(0,0,0,0.05)',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      <div style={{ position: 'relative', height: '200px' }}>
+        <img 
+          src={request.photo ? (request.photo.startsWith('http') ? request.photo : `/uploads/${request.photo}`) : fallbackImage} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          alt="Emergency"
+        />
+        <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' }}>
+          <span style={{ padding: '6px 14px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700, background: isPending ? 'rgba(245, 158, 11, 0.9)' : 'rgba(16, 185, 129, 0.9)', color: 'white', backdropFilter: 'blur(4px)' }}>
+            {isPending ? 'PENDING' : 'RESOLVED'}
+          </span>
+        </div>
+        {mine && (
+          <div style={{ position: 'absolute', top: '16px', left: '16px' }}>
+            <span style={{ padding: '6px 14px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700, background: 'var(--primary)', color: 'white' }}>
+              YOUR POST
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <h4 style={{ margin: '0 0 4px', fontWeight: 700, fontSize: '1.25rem', color: dark ? 'white' : 'var(--text-main)' }}>{request.help_type || 'General Assistance'}</h4>
+        
+        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900 }}>
+            {request.createdBy?.name?.charAt(0) || 'U'}
+          </div>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: dark ? '#94a3b8' : '#64748b' }}>
+            Requested by {mine ? 'You' : (request.createdBy?.name || 'Anonymous User')}
+          </span>
         </div>
 
-        {/* Map */}
-        {showMap && (
-          <motion.div
-            id="map"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 500 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{ marginBottom: '24px' }}
-          >
-            <MapContainer center={mapCenter} zoom={5} scrollWheelZoom style={{ width: '100%', height: '100%', minHeight: '450px', borderRadius: '18px' }}>
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {markers.map((marker) => (
-                <Marker key={marker.id} position={marker.coords}>
-                  <Popup>
-                    <strong>{marker.help_type}</strong><br />Status: {marker.status}
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          </motion.div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>
+          <i className="fas fa-map-marker-alt" style={{ color: 'var(--primary)', width: '16px' }}></i>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{request.location || 'Location shared'}</span>
+        </div>
 
-        {/* Requests Grid */}
-        <div className="row">
-          {requests.map((r, index) => (
-            <motion.div
-              key={r._id}
-              className="col-md-4 mb-4"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.6 }}
-            >
-              <motion.div
-                className={`card p-3 ${isMyRequest(r) ? 'own' : ''}`}
-                whileHover={{ y: -10, scale: 1.02 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                <motion.div className="position-relative overflow-hidden rounded mb-3">
-                  <motion.img
-                    src={r.photo ? (r.photo.startsWith('data:') ? r.photo : r.photo.startsWith('http') ? r.photo : `/uploads/${r.photo}`) : fallbackRequestImage}
-                    onError={(e) => { e.target.src = fallbackRequestImage; }}
-                    className="img-fluid rounded"
-                    alt="Request Image"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </motion.div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '8px' }}>
+          <i className="fas fa-phone-alt" style={{ color: 'var(--primary)', width: '16px' }}></i>
+          <span>{request.contact || 'No contact provided'}</span>
+        </div>
 
-                <div className="card-body p-0">
-                  <h5 className="card-title">
-                    <i className="fas fa-hand-holding-heart"></i> {r.help_type}
-                  </h5>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px', background: dark ? 'rgba(255,255,255,0.05)' : '#f8fafc', padding: '8px 12px', borderRadius: '8px' }}>
+          <i className="fas fa-bullhorn" style={{ color: request.targetNgoId ? 'var(--info)' : 'var(--success)', fontSize: '0.8rem' }}></i>
+          <span style={{ fontWeight: 600 }}>
+            {request.targetNgoId ? `Directed to: ${request.targetNgoName}` : 'Open to Community'}
+          </span>
+        </div>
 
-                  <p className="card-text mb-2">
-                    <i className="fas fa-user-circle text-secondary"></i> Created by: {r.createdBy?.name || r.createdBy?.email || 'Anonymous'}
-                  </p>
-                  { (r.targetNgoName || r.targetNgoId || r.targetNgoId?.name) && (
-                    <p className="card-text mb-2">
-                      <i className="fas fa-hands-helping text-info"></i> Target NGO: {r.targetNgoName || r.targetNgoId?.name || 'Unknown NGO'}
-                    </p>
-                  ) }
-                  <p className="card-text mb-2">
-                    <i className="fas fa-map-marker-alt text-danger"></i> {r.location}
-                  </p>
-                  <p className="card-text mb-2">
-                    <i className="fas fa-phone text-primary"></i> {r.contact}
-                  </p>
-
-                  {/* Priority */}
-                  <span className={`priority ${r.priority?.toLowerCase() || 'low'}`}>
-                    <i className={`fas fa-exclamation${r.priority === 'High' ? '' : r.priority === 'Medium' ? '-triangle' : ''}`}></i> {r.priority || 'Low'}
-                  </span>
-
-                  <div className="mt-3">                  
-                    {r.status === 'Pending' && !isMyRequest(r) && (
-                      <motion.button
-                        onClick={() => acceptHelp(r._id)}
-                        className="btn btn-primary btn-sm"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <i className="fas fa-handshake"></i> Accept Help
-                      </motion.button>
-                    )}
-
-                    {r.completedBy && r.status === 'Completed' && (
-                      <Link
-                        to={`/chat/${r._id}`}
-                        className="btn btn-success btn-sm ms-2"
-                      >
-                        <i className="fas fa-comments"></i> Chat with {r.completedBy.name || 'helper'}
-                      </Link>
-                    )}
-
-                    {isMyRequest(r) && (
-                      <>
-                        <span className="badge bg-info ms-2">
-                          <i className="fas fa-user"></i> Your Request
-                        </span>
-                        <motion.button
-                          onClick={() => deleteRequest(r._id)}
-                          className="btn btn-danger btn-sm ms-2"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <i className="fas fa-trash"></i> Delete
-                        </motion.button>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-2">
-                    {r.status === 'Pending' ? (
-                      <span className="badge bg-danger">
-                        <i className="fas fa-clock"></i> Pending
-                      </span>
-                    ) : (
-                      <span className="badge bg-success">
-                        <i className="fas fa-check"></i> Completed
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          ))}
+        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: '10px', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {isPending && !mine && (
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onAccept(request._id)} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>
+                Help Now
+              </motion.button>
+            )}
+            {mine && isPending && (
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onDelete(request._id)} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700, cursor: 'pointer' }}>
+                Delete
+              </motion.button>
+            )}
+            {!isPending && !mine && (
+              <div style={{ flex: 1, textAlign: 'center', padding: '10px', color: 'var(--success)', fontWeight: 700 }}>
+                <i className="fas fa-check-circle me-2"></i> Resolved by {request.completedBy?.name || 'Helper'}
+              </div>
+            )}
+            {!isPending && mine && (
+              <div style={{ flex: 1, textAlign: 'center', padding: '10px', color: 'var(--success)', fontWeight: 700, background: '#f0fdf4', borderRadius: '12px' }}>
+                <i className="fas fa-check-circle me-2"></i> Accepted by {request.completedBy?.name || 'Helper'}
+              </div>
+            )}
+          </div>
+          
+          {!isPending && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '4px' }}>
+              <a href={`tel:${mine ? request.completedBy?.contact || '0000' : request.contact}`} className="btn-secondary" style={{ textAlign: 'center', padding: '8px', borderRadius: '12px', background: dark ? 'rgba(255,255,255,0.1)' : '#f8fafc', border: 'none', color: dark ? 'white' : '#64748b', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}>
+                <i className="fas fa-phone-alt mb-1 d-block"></i> Call
+              </a>
+              <a href={`mailto:${mine ? request.completedBy?.email : request.createdBy?.email}?subject=Regarding HelpHub Request`} className="btn-secondary" style={{ textAlign: 'center', padding: '8px', borderRadius: '12px', background: dark ? 'rgba(255,255,255,0.1)' : '#f8fafc', border: 'none', color: dark ? 'white' : '#64748b', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem' }}>
+                <i className="fas fa-envelope mb-1 d-block"></i> Email
+              </a>
+              <Link to={`/chat/${request._id}`} className="btn-primary" style={{ textAlign: 'center', padding: '8px', borderRadius: '12px', textDecoration: 'none', fontWeight: 600, fontSize: '0.85rem', background: 'var(--primary)', color: 'white' }}>
+                <i className="fas fa-comments mb-1 d-block"></i> Chat
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
