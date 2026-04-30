@@ -435,15 +435,3 @@ export default function Donate() {
     </div>
   );
 }
-        .form-control-v2:focus {
-          outline: none;
-          border-color: var(--primary);
-          box-shadow: 0 0 0 4px var(--primary-glow);
-        }
-        .form-control-v2.error {
-          border-color: var(--danger);
-        }
-      `}</style>
-    </div>
-  );
-}

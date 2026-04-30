@@ -226,11 +226,3 @@ function TaskCard({ title, description, meta, onAction, actionLabel, color, seco
     </motion.div>
   );
 }
-        className="btn-primary" 
-        style={{ width: '100%', padding: '12px', background: color }}
-      >
-        {actionLabel}
-      </button>
-    </motion.div>
-  );
-}
