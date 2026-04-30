@@ -1,6 +1,9 @@
 
 # 🚑 HelpHub — Social Emergency Network
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-helphub--frontend--v7d9.onrender.com-brightgreen?style=for-the-badge)](https://helphub-frontend-v7d9.onrender.com)
+[![Backend API](https://img.shields.io/badge/Backend_API-helphub--backend--1awo.onrender.com-blue?style=for-the-badge)](https://helphub-backend-1awo.onrender.com)
+
 HelpHub is a **real-time social emergency assistance platform** that connects people in need with volunteers, NGOs, and donors instantly.
 
 It enables anyone to **request help** and anyone to **contribute**, creating a powerful community-driven support system.
