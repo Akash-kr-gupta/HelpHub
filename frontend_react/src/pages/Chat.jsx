@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
+import axios from 'axios';
 
 export default function Chat() {
   const { id } = useParams();
@@ -19,16 +20,16 @@ export default function Chat() {
   }, [id]);
 
   useEffect(() => {
-    fetch('/api/requests/' + id, {
+    axios.get('/api/requests/' + id, {
       headers: { Authorization: 'Bearer ' + localStorage.getItem('helphub_token') },
     })
-      .then((res) => res.json())
-      .then((data) => setRequest(data))
+      .then((res) => setRequest(res.data))
       .catch((err) => console.error('Failed to load request for chat', err));
   }, [id]);
 
   useEffect(() => {
-    socketRef.current = io(import.meta.env.VITE_API_URL || '');
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'https://helphub-backend-1awo.onrender.com';
+    socketRef.current = io(backendUrl);
     socketRef.current.emit('join_room', id);
 
     socketRef.current.on('receive_message', (msg) => {
@@ -101,6 +102,22 @@ export default function Chat() {
           </div>
           <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }}></div>
         </motion.header>
+
+        {/* Request Details Card */}
+        {request && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass"
+            style={{ padding: '1rem 1.5rem', borderRadius: '12px', background: '#fff9e6', marginBottom: '10px', boxShadow: 'var(--shadow-sm)', borderLeft: '4px solid var(--accent)' }}
+          >
+             <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '1rem' }}>Original Request Details</h4>
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Needs:</strong> {request?.description}</p>
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Location:</strong> {request?.location}</p>
+             <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem' }}><strong>Contact:</strong> {request?.contact}</p>
+             <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>Requested By:</strong> {request?.createdBy?.name || 'User'}</p>
+          </motion.div>
+        )}
 
         {/* Messages Area */}
         <motion.div 
