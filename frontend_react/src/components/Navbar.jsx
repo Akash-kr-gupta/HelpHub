@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { createSocket } from '../utils/socket';
 import { clearStoredAuth, getChatRooms, getStoredToken, getStoredUser, getUnreadMessageCount, incrementUnreadMessages } from '../utils/storage';
-import { playIncomingMessageBell } from '../utils/notificationSound';
+import { enableIncomingMessageSound, playIncomingMessageBell } from '../utils/notificationSound';
 
 export default function Navbar({ token, user }) {
   const navigate = useNavigate();
@@ -13,6 +13,16 @@ export default function Navbar({ token, user }) {
   const [unreadCount, setUnreadCount] = useState(() => getUnreadMessageCount());
   const [showConversations, setShowConversations] = useState(false);
   const [conversations, setConversations] = useState([]);
+
+  useEffect(() => {
+    const unlockSound = () => enableIncomingMessageSound();
+    window.addEventListener('pointerdown', unlockSound, { once: true, passive: true });
+    window.addEventListener('keydown', unlockSound, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlockSound);
+      window.removeEventListener('keydown', unlockSound);
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) {
