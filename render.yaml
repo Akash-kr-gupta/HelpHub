@@ -20,6 +20,10 @@ services:
     rootDir: frontend_react
     staticPublishPath: ./dist
     buildCommand: npm install --include=dev && npm run build
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: NODE_VERSION
         value: 20
