@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { createSocket } from '../utils/socket';
-import { clearStoredAuth, getChatRooms, getUnreadMessageCount, incrementUnreadMessages } from '../utils/storage';
+import { clearStoredAuth, getChatRooms, getStoredUser, getUnreadMessageCount, incrementUnreadMessages } from '../utils/storage';
 
 export default function Navbar({ token, user }) {
   const navigate = useNavigate();
