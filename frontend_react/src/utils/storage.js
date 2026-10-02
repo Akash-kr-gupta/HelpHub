@@ -3,22 +3,38 @@ export function getStoredUser() {
     const value = localStorage.getItem('helphub_user');
     return value ? JSON.parse(value) : null;
   } catch {
-    localStorage.removeItem('helphub_user');
+    try {
+      localStorage.removeItem('helphub_user');
+    } catch {
+      // Storage can be unavailable in private or restricted browser contexts.
+    }
     return null;
   }
 }
 
 export function getStoredToken() {
-  return localStorage.getItem('helphub_token');
+  try {
+    return localStorage.getItem('helphub_token');
+  } catch {
+    return null;
+  }
 }
 export function setStoredAuth(token, user) {
-  localStorage.setItem('helphub_token', token);
-  localStorage.setItem('helphub_user', JSON.stringify(user));
+  try {
+    localStorage.setItem('helphub_token', token);
+    localStorage.setItem('helphub_user', JSON.stringify(user));
+  } catch {
+    // The session still remains in memory for the current page.
+  }
   window.dispatchEvent(new Event('helphub-auth-changed'));
 }
 export function clearStoredAuth() {
-  localStorage.removeItem('helphub_token');
-  localStorage.removeItem('helphub_user');
+  try {
+    localStorage.removeItem('helphub_token');
+    localStorage.removeItem('helphub_user');
+  } catch {
+    // Ignore unavailable browser storage during logout.
+  }
   window.dispatchEvent(new Event('helphub-auth-changed'));
 }
 
