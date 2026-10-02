@@ -4,6 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { createSocket } from '../utils/socket';
 import { clearStoredAuth, getChatRooms, getStoredToken, getStoredUser, getUnreadMessageCount, incrementUnreadMessages } from '../utils/storage';
+import { playIncomingMessageBell } from '../utils/notificationSound';
 
 export default function Navbar({ token, user }) {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function Navbar({ token, user }) {
       if (!message.roomId || message.roomId === activeRoomId) return;
       incrementUnreadMessages(message.roomId);
       setUnreadCount(getUnreadMessageCount());
+      playIncomingMessageBell();
     };
     const refreshUnreadCount = () => setUnreadCount(getUnreadMessageCount());
 
