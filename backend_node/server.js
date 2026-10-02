@@ -39,53 +39,49 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => {
   socket.join(`user:${socket.user.id}`);
   socket.on('join_room', async (roomId, acknowledge) => {
-    if (!roomId || !(await canAccessChat(roomId, socket.user.id))) {
+    const context = roomId ? await getChatContext(roomId) : null;
+    if (!context || !context.participants.some((participant) => participant.toString() === socket.user.id)) {
       acknowledge?.({ ok: false, message: 'Private chat access denied' });
       return;
     }
     socket.join(roomId);
     socket.data.chatRooms = socket.data.chatRooms || new Set();
     socket.data.chatRooms.add(roomId);
+    socket.data.chatContexts = socket.data.chatContexts || new Map();
+    socket.data.chatContexts.set(roomId, context);
     acknowledge?.({ ok: true });
   });
 
   socket.on('send_message', async (data, acknowledge) => {
-    if (!data?.roomId || !data.message || !(await canAccessChat(data.roomId, socket.user.id))) {
+    const context = data?.roomId ? socket.data.chatContexts?.get(data.roomId) : null;
+    if (!context || !data.message) {
       acknowledge?.({ ok: false, message: 'Private chat access denied' });
       return;
     }
-    try {
-      const context = await getChatContext(data.roomId);
-      const savedMessage = await Message.findOneAndUpdate(
-        { messageId: data.message.id },
-        {
-          messageId: data.message.id,
-          roomId: data.roomId,
-          roomType: context.type,
-          participants: context.participants,
-          fromUserId: socket.user.id,
-          from: socket.user.name,
-          text: data.message.text,
-          timestamp: data.message.timestamp || new Date(),
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-      const message = {
-        id: savedMessage.messageId,
-        roomId: savedMessage.roomId,
-        fromUserId: savedMessage.fromUserId,
-        from: savedMessage.from,
-        text: savedMessage.text,
-        timestamp: savedMessage.timestamp,
-      };
-      context.participants
-        .filter((participant) => participant.toString() !== socket.user.id)
-        .forEach((participant) => io.to(`user:${participant.toString()}`).emit('receive_message', message));
-      acknowledge?.({ ok: true, message });
-    } catch (error) {
-      console.error('Message persistence error:', error.message);
-      acknowledge?.({ ok: false, message: 'Message could not be sent' });
-    }
+    const message = {
+      id: data.message.id,
+      roomId: data.roomId,
+      fromUserId: socket.user.id,
+      from: socket.user.name,
+      text: data.message.text,
+      timestamp: data.message.timestamp || new Date(),
+    };
+
+    // Deliver first; MongoDB persistence runs off the latency-critical path.
+    context.participants
+      .filter((participant) => participant.toString() !== socket.user.id)
+      .forEach((participant) => io.to(`user:${participant.toString()}`).emit('receive_message', message));
+    acknowledge?.({ ok: true, message });
+
+    Message.findOneAndUpdate(
+      { messageId: message.id },
+      {
+        ...message,
+        roomType: context.type,
+        participants: context.participants,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).catch((error) => console.error('Message persistence error:', error.message));
   });
 });
 
