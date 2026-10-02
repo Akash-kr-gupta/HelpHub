@@ -1,12 +1,39 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getStoredUser } from '../utils/storage';
-import { clearStoredAuth } from '../utils/storage';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { createSocket } from '../utils/socket';
+import { clearStoredAuth, getChatRooms, getUnreadMessageCount, incrementUnreadMessages } from '../utils/storage';
 
 export default function Navbar({ token, user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const activeUser = user || getStoredUser();
+  const [unreadCount, setUnreadCount] = useState(() => getUnreadMessageCount());
+
+  useEffect(() => {
+    if (!token) {
+      setUnreadCount(0);
+      return undefined;
+    }
+
+    const socket = createSocket();
+    getChatRooms().forEach((roomId) => socket.emit('join_room', roomId));
+    const activeRoomId = location.pathname.startsWith('/chat/') ? location.pathname.split('/chat/')[1] : '';
+    const handleMessage = (message) => {
+      if (!message.roomId || message.roomId === activeRoomId) return;
+      incrementUnreadMessages(message.roomId);
+      setUnreadCount(getUnreadMessageCount());
+    };
+    const refreshUnreadCount = () => setUnreadCount(getUnreadMessageCount());
+
+    socket.on('receive_message', handleMessage);
+    window.addEventListener('helphub-unread-changed', refreshUnreadCount);
+    return () => {
+      socket.off('receive_message', handleMessage);
+      window.removeEventListener('helphub-unread-changed', refreshUnreadCount);
+      socket.disconnect();
+    };
+  }, [token, location.pathname]);
 
   const logout = () => {
     clearStoredAuth();
@@ -52,6 +79,18 @@ export default function Navbar({ token, user }) {
             {activeUser?.role === 'citizen' && <NavLink to="/dashboard">Dashboard</NavLink>}
             <NavLink to="/donate">Donate</NavLink>
             <NavLink to="/profile">Profile</NavLink>
+            <motion.button
+              type="button"
+              onClick={() => navigate('/profile')}
+              title="Open conversations"
+              aria-label={`Open conversations${unreadCount ? `, ${unreadCount} unread` : ''}`}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
+              style={{ position: 'relative', width: '42px', height: '38px', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: 'white', cursor: 'pointer' }}
+            >
+              <i className="fas fa-comment-dots"></i>
+              {unreadCount > 0 && <span style={{ position: 'absolute', top: '-7px', right: '-7px', minWidth: '20px', height: '20px', padding: '0 5px', borderRadius: '99px', background: '#ef4444', color: 'white', fontSize: '0.7rem', fontWeight: 800, display: 'grid', placeItems: 'center', border: '2px solid #0f172a' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            </motion.button>
             <motion.button
               className="btn-logout"
               onClick={logout}

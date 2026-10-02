@@ -23,7 +23,15 @@ const io = new Server(server, {
   }
 });
 
-io.on('connection', (socket) => { socket.on('join_room', (roomId) => { socket.join(roomId); }); socket.on('send_message', (data) => { socket.to(data.roomId).emit('receive_message', data.message); }); });
+io.on('connection', (socket) => {
+  socket.on('join_room', (roomId) => {
+    if (roomId) socket.join(roomId);
+  });
+  socket.on('send_message', (data) => {
+    if (!data?.roomId || !data.message) return;
+    socket.to(data.roomId).emit('receive_message', { ...data.message, roomId: data.roomId });
+  });
+});
 
   app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json({ limit: '20mb' }));

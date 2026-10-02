@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { getStoredUser } from '../utils/storage';
+import { clearUnreadMessages, getStoredUser, rememberChatRoom } from '../utils/storage';
 import { createSocket } from '../utils/socket';
 
 export default function Chat() {
@@ -12,11 +12,14 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [request, setRequest] = useState(null);
   const [donation, setDonation] = useState(null);
+  const [connected, setConnected] = useState(false);
   const scrollRef = useRef();
   const socketRef = useRef();
   const user = getStoredUser() || {};
 
   useEffect(() => {
+    rememberChatRoom(id);
+    clearUnreadMessages(id);
     const stored = window.localStorage.getItem('helphub_chat_' + id);
     if (stored) {
       try {
@@ -49,9 +52,16 @@ export default function Chat() {
 
   useEffect(() => {
     socketRef.current = createSocket();
-    socketRef.current.emit('join_room', id);
+    const socket = socketRef.current;
+    const joinRoom = () => {
+      setConnected(true);
+      socket.emit('join_room', id);
+    };
+    const handleDisconnect = () => setConnected(false);
+    socket.on('connect', joinRoom);
+    socket.on('disconnect', handleDisconnect);
 
-    socketRef.current.on('receive_message', (msg) => {
+    socket.on('receive_message', (msg) => {
       setMessages((prev) => {
         // Prevent duplicate messages if any
         if (prev.some(m => m.id === msg.id)) return prev;
@@ -60,7 +70,9 @@ export default function Chat() {
     });
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      socket.off('connect', joinRoom);
+      socket.off('disconnect', handleDisconnect);
+      socket.disconnect();
     };
   }, [id]);
 
@@ -74,10 +86,8 @@ export default function Chat() {
     if (!text.trim()) return;
     
     // Check if recipient is available (either creator or assignee)
-    const recipientName = request?.completedBy?.name || request?.createdBy?.name || 'User';
-
     const newMsg = {
-      id: Date.now(),
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       from: user.name || 'Me',
       text: text.trim(),
       timestamp: new Date().toISOString(),
@@ -88,9 +98,7 @@ export default function Chat() {
     setMessages((prev) => [...prev, newMsg]);
     
     // Emit to other users in the room
-    if (socketRef.current) {
-        socketRef.current.emit('send_message', { roomId: id, message: newMsg });
-    }
+    if (socketRef.current?.connected) socketRef.current.emit('send_message', { roomId: id, message: newMsg });
     
     setText('');
   };
@@ -119,7 +127,7 @@ export default function Chat() {
               {donation ? 'Coordinating with Donor...' : (request?.completedBy ? 'Task Assigned' : 'Waiting for connection...')}
             </p>
           </div>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }}></div>
+          <div title={connected ? 'Chat connected' : 'Connecting to chat'} style={{ width: '12px', height: '12px', borderRadius: '50%', background: connected ? '#10b981' : '#f59e0b', boxShadow: `0 0 0 5px ${connected ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)'}` }}></div>
         </motion.header>
 
         {/* Request Details Card */}
@@ -220,7 +228,7 @@ export default function Chat() {
             placeholder="Type your message..."
             style={{ flex: 1, border: 'none', background: '#f8fafc' }}
           />
-          <button type="submit" style={{ width: '50px', height: '50px', borderRadius: '16px', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+          <button type="submit" disabled={!connected || !text.trim()} title={connected ? 'Send message' : 'Connecting...'} style={{ width: '50px', height: '50px', borderRadius: '16px', background: connected && text.trim() ? 'var(--primary)' : '#cbd5e1', color: 'white', border: 'none', cursor: connected && text.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', transition: 'background 0.2s' }}>
             <i className="fas fa-paper-plane"></i>
           </button>
         </motion.form>
