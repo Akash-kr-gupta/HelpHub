@@ -23,33 +23,68 @@ const io = new Server(server, {
   }
 });
 
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    const data = jwt.verify(token, process.env.JWT_SECRET || 'helphub_secret');
+    const user = await User.findById(data.id).select('name role');
+    if (!user) return next(new Error('Unauthorized chat connection'));
+    socket.user = { id: user._id.toString(), name: user.name, role: user.role };
+    next();
+  } catch {
+    next(new Error('Unauthorized chat connection'));
+  }
+});
+
 io.on('connection', (socket) => {
-  socket.on('join_room', (roomId) => {
-    if (roomId) socket.join(roomId);
+  socket.join(`user:${socket.user.id}`);
+  socket.on('join_room', async (roomId, acknowledge) => {
+    if (!roomId || !(await canAccessChat(roomId, socket.user.id))) {
+      acknowledge?.({ ok: false, message: 'Private chat access denied' });
+      return;
+    }
+    socket.join(roomId);
+    socket.data.chatRooms = socket.data.chatRooms || new Set();
+    socket.data.chatRooms.add(roomId);
+    acknowledge?.({ ok: true });
   });
-  socket.on('send_message', async (data) => {
-    if (!data?.roomId || !data.message) return;
+
+  socket.on('send_message', async (data, acknowledge) => {
+    if (!data?.roomId || !data.message || !(await canAccessChat(data.roomId, socket.user.id))) {
+      acknowledge?.({ ok: false, message: 'Private chat access denied' });
+      return;
+    }
     try {
+      const context = await getChatContext(data.roomId);
       const savedMessage = await Message.findOneAndUpdate(
         { messageId: data.message.id },
         {
           messageId: data.message.id,
           roomId: data.roomId,
-          from: data.message.from,
+          roomType: context.type,
+          participants: context.participants,
+          fromUserId: socket.user.id,
+          from: socket.user.name,
           text: data.message.text,
           timestamp: data.message.timestamp || new Date(),
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
-      socket.to(data.roomId).emit('receive_message', {
+      const message = {
         id: savedMessage.messageId,
         roomId: savedMessage.roomId,
+        fromUserId: savedMessage.fromUserId,
         from: savedMessage.from,
         text: savedMessage.text,
         timestamp: savedMessage.timestamp,
-      });
+      };
+      context.participants
+        .filter((participant) => participant.toString() !== socket.user.id)
+        .forEach((participant) => io.to(`user:${participant.toString()}`).emit('receive_message', message));
+      acknowledge?.({ ok: true, message });
     } catch (error) {
       console.error('Message persistence error:', error.message);
+      acknowledge?.({ ok: false, message: 'Message could not be sent' });
     }
   });
 });
@@ -102,6 +137,7 @@ const requestSchema = new mongoose.Schema({
 });
 
 const donationSchema = new mongoose.Schema({
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   name: String,
   donationType: { type: String, enum: ['Money', 'Food', 'Clothes', 'Medical Supplies', 'Blood', 'Other'], default: 'Money' },
   item: String, // Description or custom item if Other
@@ -122,10 +158,38 @@ const Donation = mongoose.model('Donation', donationSchema);
 const Message = mongoose.model('Message', new mongoose.Schema({
   messageId: { type: String, required: true, unique: true },
   roomId: { type: String, required: true, index: true },
+  roomType: { type: String, enum: ['request', 'donation'], required: true },
+  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
+  fromUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   from: { type: String, required: true },
   text: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
 }));
+
+async function getChatContext(roomId) {
+  const request = await Request.findById(roomId).select('createdBy completedBy targetNgoId help_type');
+  if (request) {
+    return {
+      type: 'request',
+      title: `${request.help_type || 'Support'} Chat`,
+      participants: [request.createdBy, request.completedBy, request.targetNgoId].filter(Boolean),
+    };
+  }
+  const donation = await Donation.findById(roomId).select('createdBy ngoId donationType');
+  if (donation) {
+    return {
+      type: 'donation',
+      title: `${donation.donationType || 'Donation'} Chat`,
+      participants: [donation.createdBy, donation.ngoId].filter(Boolean),
+    };
+  }
+  return null;
+}
+
+async function canAccessChat(roomId, userId) {
+  const context = await getChatContext(roomId);
+  return Boolean(context?.participants.some((participant) => participant.toString() === userId));
+}
 
 // Update user profile (name, avatar)
 app.put('/api/profile', authenticate, async (req, res) => {
@@ -215,16 +279,48 @@ app.get('/api/ngos', authenticate, async (req, res) => {
 });
 
 app.get('/api/chat/:roomId/messages', authenticate, async (req, res) => {
+  if (!(await canAccessChat(req.params.roomId, req.user.id))) {
+    return res.status(403).json({ message: 'Private chat access denied' });
+  }
   const messages = await Message.find({ roomId: req.params.roomId })
     .sort({ timestamp: 1 })
-    .select('messageId roomId from text timestamp -_id');
+    .select('messageId roomId from fromUserId text timestamp -_id');
   res.json(messages.map((message) => ({
     id: message.messageId,
     roomId: message.roomId,
+    fromUserId: message.fromUserId,
     from: message.from,
     text: message.text,
     timestamp: message.timestamp,
   })));
+});
+
+app.get('/api/chat/conversations', authenticate, async (req, res) => {
+  const messages = await Message.find({ participants: req.user.id })
+    .sort({ timestamp: -1 })
+    .limit(100)
+    .select('messageId roomId roomType from fromUserId text timestamp -_id');
+  const seenRooms = new Set();
+  const conversations = [];
+
+  for (const message of messages) {
+    if (seenRooms.has(message.roomId)) continue;
+    seenRooms.add(message.roomId);
+    const context = await getChatContext(message.roomId);
+    if (!context) continue;
+    const otherUserId = context.participants.find((participant) => participant.toString() !== req.user.id);
+    const otherUser = otherUserId ? await User.findById(otherUserId).select('name email') : null;
+    conversations.push({
+      roomId: message.roomId,
+      type: message.roomType,
+      title: context.title,
+      senderName: message.fromUserId.toString() === req.user.id ? 'You' : message.from,
+      otherUser: otherUser ? { id: otherUser._id, name: otherUser.name, email: otherUser.email } : null,
+      lastMessage: message.text,
+      timestamp: message.timestamp,
+    });
+  }
+  res.json(conversations);
 });
 
 app.delete('/api/requests/:id', authenticate, async (req, res) => {
@@ -318,6 +414,7 @@ app.put('/api/requests/:id/accept', authenticate, async (req, res) => {
 app.post('/api/donations', authenticate, async (req, res) => {
   const { name, donationType, item, amount, quantity, contact, address, message, ngoId, ngoName } = req.body;
   const donation = new Donation({ 
+    createdBy: req.user.id,
     name, 
     donationType: donationType || 'Money', 
     item: item || '',

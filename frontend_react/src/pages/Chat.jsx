@@ -68,7 +68,9 @@ export default function Chat() {
     const socket = socketRef.current;
     const joinRoom = () => {
       setConnected(true);
-      socket.emit('join_room', id);
+      socket.emit('join_room', id, (result) => {
+        if (!result?.ok) setConnected(false);
+      });
     };
     const handleDisconnect = () => setConnected(false);
     socket.on('connect', joinRoom);
@@ -78,7 +80,7 @@ export default function Chat() {
       setMessages((prev) => {
         // Prevent duplicate messages if any
         if (prev.some(m => m.id === msg.id)) return prev;
-        return [...prev, { ...msg, isMe: false }];
+        return [...prev, { ...msg, isMe: msg.fromUserId === user.id || msg.from === user.name }];
       });
     });
 
