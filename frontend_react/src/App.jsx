@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
@@ -12,11 +12,23 @@ import Signup from './pages/Signup';
 import Profile from './pages/Profile';
 import Analytics from './pages/Analytics';
 import VolunteerDashboard from './pages/VolunteerDashboard';
+import { getStoredToken, getStoredUser } from './utils/storage';
 
- function App() {
+function App() {
   const location = useLocation();
-  const token = localStorage.getItem('helphub_token');
-  const user = JSON.parse(localStorage.getItem('helphub_user') || 'null');
+  const [auth, setAuth] = useState(() => ({ token: getStoredToken(), user: getStoredUser() }));
+
+  useEffect(() => {
+    const refreshAuth = () => setAuth({ token: getStoredToken(), user: getStoredUser() });
+    window.addEventListener('helphub-auth-changed', refreshAuth);
+    window.addEventListener('storage', refreshAuth);
+    return () => {
+      window.removeEventListener('helphub-auth-changed', refreshAuth);
+      window.removeEventListener('storage', refreshAuth);
+    };
+  }, []);
+
+  const { token, user } = auth;
   
   // Routes that should NOT be wrapped in a standard container (usually full-width/dashboard layouts)
   const isDashboardRoute = ['/dashboard', '/ngo-dashboard', '/volunteer-dashboard', '/login', '/signup', '/profile', '/analytics', '/request', '/donate', '/'].includes(location.pathname) || location.pathname.startsWith('/chat');

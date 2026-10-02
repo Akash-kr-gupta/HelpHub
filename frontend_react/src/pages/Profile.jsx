@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { getStoredUser, setStoredAuth } from '../utils/storage';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -16,7 +17,7 @@ export default function Profile() {
   const token = localStorage.getItem('helphub_token');
 
   useEffect(() => {
-    const userObj = JSON.parse(localStorage.getItem('helphub_user') || '{}');
+    const userObj = getStoredUser() || {};
     setUser(userObj);
     setEditName(userObj.name || '');
     setAvatarPreview(userObj.avatar || '');
@@ -45,7 +46,7 @@ export default function Profile() {
     try {
       const res = await axios.put('/api/profile', { name: editName, avatar: avatarPreview }, { headers: { Authorization: `Bearer ${token}` } });
       setUser(res.data);
-      localStorage.setItem('helphub_user', JSON.stringify(res.data));
+      setStoredAuth(token, res.data);
       setEditMode(false);
     } catch (err) {
       alert('Failed to update profile');

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
 import axios from 'axios';
+import { getStoredUser } from '../utils/storage';
+import { createSocket } from '../utils/socket';
 
 export default function Chat() {
   const { id } = useParams();
@@ -13,11 +14,17 @@ export default function Chat() {
   const [donation, setDonation] = useState(null);
   const scrollRef = useRef();
   const socketRef = useRef();
-  const user = JSON.parse(localStorage.getItem('helphub_user') || '{}');
+  const user = getStoredUser() || {};
 
   useEffect(() => {
     const stored = window.localStorage.getItem('helphub_chat_' + id);
-    if (stored) setMessages(JSON.parse(stored));
+    if (stored) {
+      try {
+        setMessages(JSON.parse(stored));
+      } catch {
+        window.localStorage.removeItem('helphub_chat_' + id);
+      }
+    }
   }, [id]);
 
   useEffect(() => {
@@ -41,8 +48,7 @@ export default function Chat() {
   }, [id]);
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'https://helphub-backend-1awo.onrender.com';
-    socketRef.current = io(backendUrl);
+    socketRef.current = createSocket();
     socketRef.current.emit('join_room', id);
 
     socketRef.current.on('receive_message', (msg) => {

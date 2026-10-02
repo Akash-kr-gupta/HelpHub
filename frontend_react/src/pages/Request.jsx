@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStoredUser } from '../utils/storage';
 
 const requestTypes = [
   { id: 'Medical', label: 'Medical Emergency', icon: 'fa-ambulance', color: '#ef4444' },
@@ -15,7 +16,7 @@ const requestTypes = [
 export default function Request() {
   const navigate = useNavigate();
   const [ngos, setNgos] = useState([]);
-  const currentUser = JSON.parse(localStorage.getItem('helphub_user') || '{}');
+  const currentUser = getStoredUser() || {};
 
   const [form, setForm] = useState({ 
     help_type: 'Medical', 
@@ -32,6 +33,7 @@ export default function Request() {
   const [photoPreview, setPhotoPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [published, setPublished] = useState(false);
 
   useEffect(() => {
     axios.get('/api/ngos', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
@@ -69,15 +71,12 @@ export default function Request() {
         headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` },
       });
       setStatus('success');
-      window.alert('Successfully requested');
-      
-      if (currentUser.role === 'ngo') {
-        navigate('/ngo-dashboard');
-      } else if (currentUser.role === 'volunteer') {
-        navigate('/volunteer-dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      setPublished(true);
+      setTimeout(() => {
+        if (currentUser.role === 'ngo') navigate('/ngo-dashboard');
+        else if (currentUser.role === 'volunteer') navigate('/volunteer-dashboard');
+        else navigate('/dashboard');
+      }, 1800);
     } catch (err) {
       setStatus('error');
       setErrors({ submit: err.response?.data?.message || 'Failed to post request. Please try again.' });
@@ -92,6 +91,39 @@ export default function Request() {
       background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
       padding: '4rem 1rem'
     }}>
+      <AnimatePresence>
+        {published && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'grid', placeItems: 'center', padding: '1rem', background: 'rgba(15, 23, 42, 0.42)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 28, scale: 0.88 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+              style={{ width: 'min(100%, 430px)', overflow: 'hidden', borderRadius: '28px', background: 'white', boxShadow: '0 24px 70px rgba(15, 23, 42, 0.28)', textAlign: 'center' }}
+            >
+              <div style={{ padding: '2.25rem 2rem 1.75rem' }}>
+                <motion.div
+                  initial={{ scale: 0, rotate: -20 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 14 }}
+                  style={{ width: '74px', height: '74px', margin: '0 auto 1.25rem', display: 'grid', placeItems: 'center', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', fontSize: '2.2rem' }}
+                >
+                  <i className="fas fa-check"></i>
+                </motion.div>
+                <p style={{ margin: 0, color: '#16a34a', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase' }}>Live broadcast sent</p>
+                <h2 style={{ margin: '0.45rem 0 0.6rem', color: '#172033', fontSize: '1.65rem', fontWeight: 900 }}>Emergency published</h2>
+                <p style={{ margin: 0, color: '#64748b', lineHeight: 1.5 }}>Your request is now visible to nearby volunteers and NGOs.</p>
+              </div>
+              <div style={{ padding: '0 2rem 1.25rem', color: '#94a3b8', fontSize: '0.8rem', fontWeight: 700 }}>Taking you to your dashboard...</div>
+              <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1.8, ease: 'linear' }} style={{ height: '5px', transformOrigin: 'left', background: 'linear-gradient(90deg, #10b981, #0ea5e9)' }} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <header style={{ textAlign: 'center', marginBottom: '4rem' }}>
           <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} style={{ display: 'inline-flex', padding: '16px', borderRadius: '24px', background: 'white', color: 'var(--danger)', fontSize: '2.5rem', marginBottom: '1.5rem', boxShadow: 'var(--shadow-lg)' }}>

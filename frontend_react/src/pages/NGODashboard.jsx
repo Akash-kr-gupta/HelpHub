@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
 import Toast from '../components/Toast';
+import { createSocket } from '../utils/socket';
+import { getStoredUser } from '../utils/storage';
+import { clearStoredAuth } from '../utils/storage';
 
 let socket;
 
@@ -15,7 +17,7 @@ export default function NGODashboard() {
   const [toast, setToast] = useState({ show: false, message: '' });
   const navigate = useNavigate();
 
-  const currentUser = JSON.parse(localStorage.getItem('helphub_user') || '{}');
+  const currentUser = getStoredUser() || {};
   const ngoUserId = currentUser?.id;
 
   const refreshRequests = async () => {
@@ -41,7 +43,7 @@ export default function NGODashboard() {
     axios.get('/api/analytics', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
       .then(res => setStats(p => ({ ...p, ngos: res.data.ngos || 0, donations: res.data.donations || 0 })));
 
-    socket = io(import.meta.env.VITE_API_URL || '');
+    socket = createSocket();
     socket.on('new_help_request', (data) => {
       if (data.createdBy !== currentUser.id) {
         setToast({ show: true, message: `New ${data.help_type} request posted!` });

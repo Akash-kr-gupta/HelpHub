@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { getStoredUser, setStoredAuth } from '../utils/storage';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function Login() {
  
   useEffect(() => {
     if (localStorage.getItem('helphub_token')) {
-      const user = JSON.parse(localStorage.getItem('helphub_user') || '{}');
+      const user = getStoredUser() || {};
       if (user.role === 'ngo') navigate('/ngo-dashboard');
       else if (user.role === 'volunteer') navigate('/volunteer-dashboard');
       else navigate('/dashboard');
@@ -26,8 +27,7 @@ export default function Login() {
     try {
       const resp = await axios.post('/api/auth/login', { email, password });
 
-      localStorage.setItem('helphub_token', resp.data.token);
-      localStorage.setItem('helphub_user', JSON.stringify(resp.data.user));
+      setStoredAuth(resp.data.token, resp.data.user);
       
       // Redirect to correct dashboard after login
       if (resp.data.user.role === 'ngo') {

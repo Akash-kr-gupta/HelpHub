@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStoredUser } from '../utils/storage';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,19 +35,19 @@ export default function Home() {
   return (
     <div className="home-v2" style={{ overflowX: 'hidden' }}>
       {/* Hero Section */}
-      <section style={{ 
+      <section className="home-hero" style={{ 
         minHeight: '100vh', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
         position: 'relative',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-        color: 'white',
+        color: '#102a43',
         padding: '2rem'
       }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', opacity: 0.4 }}>
-          <div style={{ position: 'absolute', width: '600px', height: '600px', background: 'var(--primary)', filter: 'blur(120px)', borderRadius: '50%', top: '-200px', right: '-100px', animation: 'float 20s infinite alternate' }}></div>
-          <div style={{ position: 'absolute', width: '500px', height: '500px', background: '#a855f7', filter: 'blur(100px)', borderRadius: '50%', bottom: '-100px', left: '-100px', animation: 'float 25s infinite alternate-reverse' }}></div>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity: 0.72, background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 42%), linear-gradient(315deg, rgba(244, 63, 94, 0.08), transparent 38%)' }}>
+          <div className="signal-grid" />
+          <div className="signal-line signal-line-one" />
+          <div className="signal-line signal-line-two" />
         </div>
 
         <div className="container" style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '900px' }}>
@@ -55,9 +56,9 @@ export default function Home() {
               display: 'inline-block', 
               padding: '8px 24px', 
               borderRadius: '99px', 
-              background: 'rgba(255,255,255,0.1)', 
+              background: 'rgba(255,255,255,0.72)', 
               backdropFilter: 'blur(10px)', 
-              border: '1px solid rgba(255,255,255,0.2)',
+              border: '1px solid rgba(16,42,67,0.14)',
               fontSize: '0.9rem',
               fontWeight: 700,
               letterSpacing: '1px',
@@ -67,10 +68,10 @@ export default function Home() {
               🚀 India's Social Emergency Network
             </span>
             <h1 style={{ fontSize: 'clamp(3rem, 10vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.5rem' }}>
-              Anyone Can <span className="text-gradient">Ask</span>.<br/>
-              Anyone Can <span className="text-gradient">Help</span>.
+              Anyone Can <span className="hero-accent">Ask</span>.<br/>
+              Anyone Can <span className="hero-accent">Help</span>.
             </h1>
-            <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.7)', maxWidth: '700px', margin: '0 auto 3rem', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '1.25rem', color: '#526579', maxWidth: '700px', margin: '0 auto 3rem', lineHeight: 1.6 }}>
               A real-time digital response network connecting those in need with local heroes, donors, and NGOs instantly.
             </p>
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -86,13 +87,13 @@ export default function Home() {
                 whileHover={{ scale: 1.05 }} 
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  const user = JSON.parse(localStorage.getItem('helphub_user') || 'null');
+                  const user = getStoredUser();
                   if (!user) navigate('/signup');
                   else if (user.role === 'ngo') navigate('/ngo-dashboard');
                   else if (user.role === 'volunteer') navigate('/volunteer-dashboard');
                   else navigate('/dashboard');
                 }}
-                style={{ padding: '18px 40px', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+                style={{ padding: '18px 40px', borderRadius: '16px', background: 'white', color: '#102a43', border: '1px solid rgba(16,42,67,0.14)', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 10px 25px rgba(16,42,67,0.08)' }}
               >
                 🤝 I Want to Volunteer
               </motion.button>
@@ -102,7 +103,7 @@ export default function Home() {
       </section>
 
       {/* Features Grid */}
-      <section style={{ padding: '8rem 0', background: 'white' }}>
+      <section style={{ padding: '8rem 0', background: 'linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%)' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
           <header style={{ textAlign: 'center', marginBottom: '5rem' }}>
             <h2 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '1rem' }}>How It <span className="text-gradient">Works</span></h2>
@@ -124,7 +125,7 @@ export default function Home() {
       </section>
 
       {/* Impact Stats */}
-      <section style={{ padding: '6rem 0', background: '#f8fafc', borderY: '1px solid #e2e8f0' }}>
+      <section style={{ padding: '6rem 0', background: 'linear-gradient(110deg, #e8f7ff 0%, #f5f3ff 48%, #fff1f2 100%)', borderTop: '1px solid #dbeafe', borderBottom: '1px solid #e2e8f0' }}>
         <div className="container" style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '40px' }}>
           <StatBox label="Active Requests" value={stats.total} icon="fa-bullhorn" color="var(--primary)" />
           <StatBox label="Impact Created" value="1200+" icon="fa-heart" color="#ef4444" />
@@ -133,7 +134,7 @@ export default function Home() {
       </section>
 
       {/* Recent Emergencies */}
-      <section style={{ padding: '8rem 0' }}>
+      <section style={{ padding: '8rem 0', background: '#f8fbff' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '4rem' }}>
             <div>
@@ -208,9 +209,51 @@ export default function Home() {
       </motion.button>
 
       <style>{`
-        @keyframes float {
-          0% { transform: translate(0, 0) scale(1); }
-          100% { transform: translate(30px, 40px) scale(1.1); }
+        .home-hero {
+          background: #f7f5ef;
+          isolation: isolate;
+        }
+        .home-hero::after {
+          content: '';
+          position: absolute;
+          inset: 7% 5%;
+          border: 1px solid rgba(37, 99, 235, 0.14);
+          border-radius: 48px;
+          pointer-events: none;
+          box-shadow: inset 0 0 80px rgba(37, 99, 235, 0.05), 0 0 80px rgba(244, 63, 94, 0.05);
+        }
+        .hero-accent {
+          background: linear-gradient(110deg, #2563eb, #e11d48);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .signal-grid {
+          position: absolute;
+          inset: -20%;
+          background-image: linear-gradient(rgba(37, 99, 235, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px);
+          background-size: 72px 72px;
+          transform: rotate(-8deg);
+          animation: grid-drift 24s linear infinite;
+        }
+        .signal-line {
+          position: absolute;
+          width: 55vw;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(225, 29, 72, 0.38), transparent);
+          transform: rotate(-24deg);
+          animation: signal-sweep 8s ease-in-out infinite;
+        }
+        .signal-line-one { top: 28%; left: -12%; }
+        .signal-line-two { top: 65%; right: -18%; animation-delay: -3s; }
+        @keyframes grid-drift {
+          from { transform: translate3d(0, 0, 0) rotate(-8deg); }
+          to { transform: translate3d(72px, 72px, 0) rotate(-8deg); }
+        }
+        @keyframes signal-sweep {
+          0%, 100% { opacity: 0; transform: translateX(-18%) rotate(-24deg); }
+          35%, 65% { opacity: 1; }
+          70% { opacity: 0; transform: translateX(42%) rotate(-24deg); }
         }
       `}</style>
     </div>

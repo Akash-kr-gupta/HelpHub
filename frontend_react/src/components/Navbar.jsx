@@ -1,13 +1,15 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStoredUser } from '../utils/storage';
+import { clearStoredAuth } from '../utils/storage';
 
 export default function Navbar({ token, user }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const activeUser = user || getStoredUser();
 
   const logout = () => {
-    localStorage.removeItem('helphub_token');
-    localStorage.removeItem('helphub_user');
+    clearStoredAuth();
     navigate('/');
   };
 
@@ -45,9 +47,9 @@ export default function Navbar({ token, user }) {
         {token ? (
           <>
             <NavLink to="/request">Request Help</NavLink>
-            {user.role === 'ngo' && <NavLink to="/ngo-dashboard">NGO Hub</NavLink>}
-            {user.role === 'volunteer' && <NavLink to="/volunteer-dashboard">Volunteer Hub</NavLink>}
-            {user.role === 'citizen' && <NavLink to="/dashboard">Dashboard</NavLink>}
+            {activeUser?.role === 'ngo' && <NavLink to="/ngo-dashboard">NGO Hub</NavLink>}
+            {activeUser?.role === 'volunteer' && <NavLink to="/volunteer-dashboard">Volunteer Hub</NavLink>}
+            {activeUser?.role === 'citizen' && <NavLink to="/dashboard">Dashboard</NavLink>}
             <NavLink to="/donate">Donate</NavLink>
             <NavLink to="/profile">Profile</NavLink>
             <motion.button

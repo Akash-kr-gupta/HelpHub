@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import Toast from '../components/Toast';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -7,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { createSocket } from '../utils/socket';
+import { clearStoredAuth } from '../utils/storage';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -118,7 +119,7 @@ export default function Dashboard() {
     loadData();
     const interval = setInterval(loadData, 30000);
 
-    socket = io(import.meta.env.VITE_API_URL || '');
+    socket = createSocket();
     socket.on('new_help_request', (data) => {
       if (!currentUser || currentUser.id !== data.createdBy) {
         setToast({
@@ -248,7 +249,7 @@ export default function Dashboard() {
           
           <button 
             onClick={() => {
-              localStorage.clear();
+              clearStoredAuth();
               window.location.href = '/login';
             }} 
             style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px' }}

@@ -116,7 +116,16 @@ function authenticate(req, res, next) {
 
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const name = req.body.name?.trim();
+    const email = req.body.email?.trim().toLowerCase();
+    const { password, role } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -143,7 +152,9 @@ app.post('/api/auth/signup', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const { password } = req.body;
+  if (!email || !password) return res.status(400).json({ message: 'Email and password are required' });
   const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ message: 'User not found' });
   const match = await bcrypt.compare(password, user.password);
@@ -203,20 +214,7 @@ app.post('/api/requests', authenticate, async (req, res) => {
   const user = await User.findById(req.user.id);
   const userEmail = user ? user.email : '';
 
-  let address = location;
-  // If location looks like coordinates, try to reverse geocode
-  if (/^-?\d+\.\d+,-?\d+\.\d+$/.test(location)) {
-    const [lat, lon] = location.split(',');
-    try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-      const geoData = await geoRes.json();
-      if (geoData.display_name) {
-        address = geoData.display_name;
-      }
-    } catch (e) {
-      address = location;
-    }
-  }
+  const address = location;
   const reqDoc = new Request({
     help_type,
     description,
@@ -245,18 +243,13 @@ app.post('/api/requests', authenticate, async (req, res) => {
     createdAt: reqDoc.createdAt
   });
 
-  // Send alert to the user (email/SMS)
-  try {
-    if (userEmail) {
-      await sendEmail(userEmail, 'Help Request Submitted', `Your emergency help request has been received.\nType: ${help_type}\nLocation: ${address}\nPriority: ${priority}`);
-    }
-    await sendSMS(contact, `HelpHub: Your emergency help request (${help_type}) is received. We will reach out soon.`);
-  } catch (e) {
-    // Log but don't block
-    console.error('Alert error:', e);
-  }
-
   res.status(201).json(reqDoc);
+
+  // Notifications are best-effort and must not delay the publish response.
+  Promise.all([
+    userEmail && sendEmail(userEmail, 'Help Request Submitted', `Your emergency help request has been received.\nType: ${help_type}\nLocation: ${address}\nPriority: ${priority}`),
+    sendSMS(contact, `HelpHub: Your emergency help request (${help_type}) is received. We will reach out soon.`),
+  ].filter(Boolean)).catch((e) => console.error('Alert error:', e));
 });
 
 app.put('/api/requests/:id/accept', authenticate, async (req, res) => {
