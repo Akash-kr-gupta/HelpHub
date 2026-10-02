@@ -31,16 +31,20 @@ app.use(express.urlencoded({ limit: '20mb', extended: true }));
 app.use(morgan('dev'));
 
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/helphub';
+const MONGO_URI = process.env.MONGO_URI || (process.env.NODE_ENV === 'production' ? '' : 'mongodb://localhost:27017/helphub');
 
-mongoose.connect(MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-})
-  .then(() => console.log('✅ MongoDB Atlas Connected'))
-  .catch((e) => console.error('MongoDB Atlas connection error', e));
+async function startServer() {
+  if (!MONGO_URI) {
+    throw new Error('MONGO_URI is required in production');
+  }
+
+  await mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
+  console.log('✅ MongoDB connected');
+  server.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
+}
 
 // User schema
 const userSchema = new mongoose.Schema({
@@ -348,4 +352,7 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ message: 'API endpoint not found' });
 });
 
-server.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
+startServer().catch((error) => {
+  console.error('❌ Database connection failed. Check the Render MONGO_URI value and MongoDB Atlas network access.', error.message);
+  process.exit(1);
+});

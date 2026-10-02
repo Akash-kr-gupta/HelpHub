@@ -165,6 +165,8 @@ EMAIL_USER=your_email
 EMAIL_PASS=your_password
 ```
 
+For Render, add `MONGO_URI` in the backend service environment variables using the current MongoDB Atlas connection string. In Atlas, add the Render service network access rule required by your deployment (for a quick test, `0.0.0.0/0`, then restrict it for production). Keep `JWT_SECRET` stable across deploys so existing sessions remain valid.
+
 Run backend:
 
 ```bash
