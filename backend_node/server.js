@@ -27,9 +27,30 @@ io.on('connection', (socket) => {
   socket.on('join_room', (roomId) => {
     if (roomId) socket.join(roomId);
   });
-  socket.on('send_message', (data) => {
+  socket.on('send_message', async (data) => {
     if (!data?.roomId || !data.message) return;
-    socket.to(data.roomId).emit('receive_message', { ...data.message, roomId: data.roomId });
+    try {
+      const savedMessage = await Message.findOneAndUpdate(
+        { messageId: data.message.id },
+        {
+          messageId: data.message.id,
+          roomId: data.roomId,
+          from: data.message.from,
+          text: data.message.text,
+          timestamp: data.message.timestamp || new Date(),
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      socket.to(data.roomId).emit('receive_message', {
+        id: savedMessage.messageId,
+        roomId: savedMessage.roomId,
+        from: savedMessage.from,
+        text: savedMessage.text,
+        timestamp: savedMessage.timestamp,
+      });
+    } catch (error) {
+      console.error('Message persistence error:', error.message);
+    }
   });
 });
 
@@ -98,6 +119,13 @@ const donationSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const Request = mongoose.model('Request', requestSchema);
 const Donation = mongoose.model('Donation', donationSchema);
+const Message = mongoose.model('Message', new mongoose.Schema({
+  messageId: { type: String, required: true, unique: true },
+  roomId: { type: String, required: true, index: true },
+  from: { type: String, required: true },
+  text: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+}));
 
 // Update user profile (name, avatar)
 app.put('/api/profile', authenticate, async (req, res) => {
@@ -184,6 +212,19 @@ app.get('/api/requests', authenticate, async (req, res) => {
 app.get('/api/ngos', authenticate, async (req, res) => {
   const ngos = await User.find({ role: 'ngo' }).select('name email');
   res.json(ngos);
+});
+
+app.get('/api/chat/:roomId/messages', authenticate, async (req, res) => {
+  const messages = await Message.find({ roomId: req.params.roomId })
+    .sort({ timestamp: 1 })
+    .select('messageId roomId from text timestamp -_id');
+  res.json(messages.map((message) => ({
+    id: message.messageId,
+    roomId: message.roomId,
+    from: message.from,
+    text: message.text,
+    timestamp: message.timestamp,
+  })));
 });
 
 app.delete('/api/requests/:id', authenticate, async (req, res) => {

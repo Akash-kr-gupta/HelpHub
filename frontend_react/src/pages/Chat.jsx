@@ -31,6 +31,19 @@ export default function Chat() {
   }, [id]);
 
   useEffect(() => {
+    axios.get(`/api/chat/${id}/messages`, {
+      headers: { Authorization: 'Bearer ' + localStorage.getItem('helphub_token') },
+    })
+      .then((res) => {
+        setMessages((previousMessages) => {
+          const combined = [...res.data.map((message) => ({ ...message, isMe: message.from === user.name })), ...previousMessages];
+          return combined.filter((message, index, allMessages) => allMessages.findIndex((item) => item.id === message.id) === index);
+        });
+      })
+      .catch((error) => console.error('Failed to load chat history', error));
+  }, [id, user.name]);
+
+  useEffect(() => {
     // Determine if it's a donation or request chat by trying both if one fails, or parsing search params
     const searchParams = new URLSearchParams(window.location.search);
     const isDonation = searchParams.get('type') === 'donation';
