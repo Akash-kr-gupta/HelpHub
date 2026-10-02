@@ -292,9 +292,11 @@ app.get('/api/chat/:roomId/messages', authenticate, async (req, res) => {
 });
 
 app.get('/api/chat/conversations', authenticate, async (req, res) => {
-  const messages = await Message.find({ participants: req.user.id })
+  // Include older messages created before participant metadata was added;
+  // room access is still checked against the current request or donation.
+  const messages = await Message.find()
     .sort({ timestamp: -1 })
-    .limit(100)
+    .limit(500)
     .select('messageId roomId roomType from fromUserId text timestamp -_id');
   const seenRooms = new Set();
   const conversations = [];
@@ -303,14 +305,14 @@ app.get('/api/chat/conversations', authenticate, async (req, res) => {
     if (seenRooms.has(message.roomId)) continue;
     seenRooms.add(message.roomId);
     const context = await getChatContext(message.roomId);
-    if (!context) continue;
+    if (!context || !context.participants.some((participant) => participant.toString() === req.user.id)) continue;
     const otherUserId = context.participants.find((participant) => participant.toString() !== req.user.id);
     const otherUser = otherUserId ? await User.findById(otherUserId).select('name email') : null;
     conversations.push({
       roomId: message.roomId,
       type: message.roomType,
       title: context.title,
-      senderName: message.fromUserId.toString() === req.user.id ? 'You' : message.from,
+      senderName: message.fromUserId?.toString() === req.user.id ? 'You' : message.from,
       otherUser: otherUser ? { id: otherUser._id, name: otherUser.name, email: otherUser.email } : null,
       lastMessage: message.text,
       timestamp: message.timestamp,

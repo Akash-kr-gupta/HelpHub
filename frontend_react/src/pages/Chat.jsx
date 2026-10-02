@@ -243,7 +243,7 @@ export default function Chat() {
             placeholder="Type your message..."
             style={{ flex: 1, border: 'none', background: '#f8fafc' }}
           />
-          <button type="submit" disabled={!connected || !text.trim()} title={connected ? 'Send message' : 'Connecting...'} style={{ width: '50px', height: '50px', borderRadius: '16px', background: connected && text.trim() ? 'var(--primary)' : '#cbd5e1', color: 'white', border: 'none', cursor: connected && text.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', transition: 'background 0.2s' }}>
+          <button type="submit" disabled={!text.trim()} title={connected ? 'Send message' : 'Message will send when connected'} style={{ width: '50px', height: '50px', borderRadius: '16px', background: text.trim() ? 'var(--primary)' : '#cbd5e1', color: 'white', border: 'none', cursor: text.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', transition: 'background 0.2s' }}>
             <i className="fas fa-paper-plane"></i>
           </button>
         </motion.form>
