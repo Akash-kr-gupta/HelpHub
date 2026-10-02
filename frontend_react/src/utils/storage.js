@@ -44,7 +44,11 @@ const UNREAD_MESSAGES_KEY = 'helphub_unread_messages';
 export function rememberChatRoom(roomId) {
   if (!roomId) return;
   const rooms = getChatRooms().filter((storedRoomId) => storedRoomId !== roomId);
-  localStorage.setItem(CHAT_ROOMS_KEY, JSON.stringify([roomId, ...rooms].slice(0, 20)));
+  try {
+    localStorage.setItem(CHAT_ROOMS_KEY, JSON.stringify([roomId, ...rooms].slice(0, 20)));
+  } catch {
+    // Ignore unavailable browser storage.
+  }
 }
 
 export function getChatRooms() {
@@ -69,7 +73,11 @@ export function incrementUnreadMessages(roomId) {
   if (!roomId) return;
   const unread = getUnreadMessages();
   unread[roomId] = (unread[roomId] || 0) + 1;
-  localStorage.setItem(UNREAD_MESSAGES_KEY, JSON.stringify(unread));
+  try {
+    localStorage.setItem(UNREAD_MESSAGES_KEY, JSON.stringify(unread));
+  } catch {
+    return;
+  }
   window.dispatchEvent(new Event('helphub-unread-changed'));
 }
 
@@ -77,7 +85,11 @@ export function clearUnreadMessages(roomId) {
   const unread = getUnreadMessages();
   if (!unread[roomId]) return;
   delete unread[roomId];
-  localStorage.setItem(UNREAD_MESSAGES_KEY, JSON.stringify(unread));
+  try {
+    localStorage.setItem(UNREAD_MESSAGES_KEY, JSON.stringify(unread));
+  } catch {
+    return;
+  }
   window.dispatchEvent(new Event('helphub-unread-changed'));
 }
 

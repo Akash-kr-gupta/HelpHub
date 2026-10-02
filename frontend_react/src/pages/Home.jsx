@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStoredUser } from '../utils/storage';
+import { getStoredToken, getStoredUser } from '../utils/storage';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -23,11 +23,11 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('/api/requests/recent', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
+    axios.get('/api/requests/recent', { headers: { Authorization: `Bearer ${getStoredToken() || ''}` } })
       .then((res) => setRecent(res.data))
       .catch(() => {});
 
-    axios.get('/api/analytics', { headers: { Authorization: `Bearer ${localStorage.getItem('helphub_token')}` } })
+    axios.get('/api/analytics', { headers: { Authorization: `Bearer ${getStoredToken() || ''}` } })
       .then((res) => setStats(res.data))
       .catch(() => {});
   }, []);

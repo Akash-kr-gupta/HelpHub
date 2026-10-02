@@ -7,7 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createSocket } from '../utils/socket';
-import { clearStoredAuth } from '../utils/storage';
+import { clearStoredAuth, getStoredToken, getStoredUser } from '../utils/storage';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -56,9 +56,7 @@ export default function Dashboard() {
   const [showMap, setShowMap] = useState(false);
   const [activeTab, setActiveTab] = useState('community'); // 'community' or 'my-posts'
 
-  const currentUser = JSON.parse(
-    localStorage.getItem('helphub_user') || '{}'
-  );
+  const currentUser = getStoredUser() || {};
 
   const fallbackRequestImage =
     'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=1470&auto=format&fit=crop';

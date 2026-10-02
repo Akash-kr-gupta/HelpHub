@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { getStoredUser, setStoredAuth } from '../utils/storage';
+import { getStoredToken, getStoredUser, setStoredAuth } from '../utils/storage';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -14,7 +14,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef();
   const navigate = useNavigate();
-  const token = localStorage.getItem('helphub_token');
+  const token = getStoredToken();
 
   useEffect(() => {
     const userObj = getStoredUser() || {};

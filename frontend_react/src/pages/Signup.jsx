@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getStoredUser, setStoredAuth } from '../utils/storage';
+import { getStoredToken, getStoredUser, setStoredAuth } from '../utils/storage';
 
 export default function Signup() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'citizen' });
@@ -11,7 +11,7 @@ export default function Signup() {
   const navigate = useNavigate();
  
   useEffect(() => {
-    if (localStorage.getItem('helphub_token')) {
+    if (getStoredToken()) {
       const user = getStoredUser() || {};
       if (user.role === 'ngo') navigate('/ngo-dashboard');
       else if (user.role === 'volunteer') navigate('/volunteer-dashboard');

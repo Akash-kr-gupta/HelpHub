@@ -13,12 +13,13 @@ import {
   Tooltip, 
   Legend 
 } from 'chart.js';
+import { getStoredToken } from '../utils/storage';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Tooltip, Legend);
 
 export default function Analytics() {
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, ngos: 0, donations: 0 });
-  const token = localStorage.getItem('helphub_token');
+  const token = getStoredToken();
 
   useEffect(() => {
     axios.get('/api/analytics', { headers: { Authorization: `Bearer ${token}` } })
